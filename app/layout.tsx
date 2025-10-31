@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import Navigation from "@/components/Navigation";
 
 export const metadata: Metadata = {
-  title: "Проверка редиректов сайта",
-  description: "Инструмент для проверки основных редиректов и дублей страниц",
+  title: "SEO инструменты - Проверка редиректов и Clean-param",
+  description: "Комплексные SEO инструменты для проверки редиректов и генерации директив Clean-param",
 };
 
 export default function RootLayout({
@@ -13,7 +14,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ru">
-      <body>{children}</body>
+      <body>
+        <Navigation />
+        {children}
+      </body>
     </html>
   );
 }
