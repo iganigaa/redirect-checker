@@ -1,5 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
+import crypto from 'crypto';
+
+interface Rule {
+  type: 'disallow' | 'allow' | 'sitemap' | 'clean-param' | 'crawl-delay' | 'host';
+  path: string;
+  hash: string;
+  lineNumber: number;
+}
+
+interface AgentRules {
+  userAgent: string;
+  rules: Rule[];
+  recommendations: string[];
+  warnings: string[];
+  errors: string[];
+  cssJsBlocked: boolean;
+  imagesBlocked: boolean;
+  hasCleanParam: boolean;
+  suggestedCleanParams: string[];
+}
 
 interface CheckResult {
   category: string;
@@ -17,7 +37,6 @@ export async function POST(request: NextRequest) {
     let fetchedUrl = url;
     let statusCode = 200;
 
-    // Если не передан текст вручную - загружаем с сайта
     if (!text && url) {
       try {
         const robotsUrl = new URL('/robots.txt', url).href;
@@ -52,19 +71,232 @@ export async function POST(request: NextRequest) {
   }
 }
 
+function generateHash(text: string): string {
+  return crypto.createHash('md5').update(text.toLowerCase().trim()).digest('hex').substring(0, 8);
+}
+
+function parseRobotsByAgent(text: string): AgentRules[] {
+  const lines = text.split('\n');
+  const agents: { [key: string]: AgentRules } = {};
+  let currentAgent = '*';
+  
+  // Инициализируем агента по умолчанию
+  agents[currentAgent] = {
+    userAgent: currentAgent,
+    rules: [],
+    recommendations: [],
+    warnings: [],
+    errors: [],
+    cssJsBlocked: false,
+    imagesBlocked: false,
+    hasCleanParam: false,
+    suggestedCleanParams: []
+  };
+  
+  lines.forEach((line, index) => {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) return;
+    
+    // User-agent
+    const uaMatch = trimmed.match(/^User-agent:\s*(.+)/i);
+    if (uaMatch) {
+      currentAgent = uaMatch[1].trim();
+      if (!agents[currentAgent]) {
+        agents[currentAgent] = {
+          userAgent: currentAgent,
+          rules: [],
+          recommendations: [],
+          warnings: [],
+          errors: [],
+          cssJsBlocked: false,
+          imagesBlocked: false,
+          hasCleanParam: false,
+          suggestedCleanParams: []
+        };
+      }
+      return;
+    }
+    
+    // Disallow
+    const disallowMatch = trimmed.match(/^Disallow:\s*(.*)$/i);
+    if (disallowMatch) {
+      const path = disallowMatch[1].trim();
+      agents[currentAgent].rules.push({
+        type: 'disallow',
+        path,
+        hash: generateHash(`disallow:${path}`),
+        lineNumber: index + 1
+      });
+      
+      // Проверка на блокировку CSS/JS
+      if (path.match(/\.(css|js)$/i) || path.match(/\/(css|js)\//i) || path.includes('*.css') || path.includes('*.js')) {
+        agents[currentAgent].cssJsBlocked = true;
+      }
+      
+      // Проверка на блокировку изображений
+      if (path.match(/\.(jpg|jpeg|png|gif|webp|svg|ico)$/i) || path.includes('*.jpg') || path.includes('*.png')) {
+        agents[currentAgent].imagesBlocked = true;
+      }
+      
+      // Извлечение параметров для Clean-param
+      const paramMatches = path.match(/[?&]([^=&]+)/g);
+      if (paramMatches) {
+        paramMatches.forEach(match => {
+          const param = match.replace(/[?&]/g, '');
+          if (!param.match(/^(utm_|yclid|gclid|fbclid|_ga)/i)) {
+            if (!agents[currentAgent].suggestedCleanParams.includes(param)) {
+              agents[currentAgent].suggestedCleanParams.push(param);
+            }
+          }
+        });
+      }
+      
+      // Проверка на PAGEN_ и другие параметры пагинации
+      if (path.match(/PAGEN_|page=|page_/i)) {
+        const pageParam = path.match(/PAGEN_\d+|page|PAGEN_/i);
+        if (pageParam) {
+          const param = pageParam[0].replace(/\d+/g, '').replace(/[=&]/g, '');
+          if (param && !agents[currentAgent].suggestedCleanParams.includes(param)) {
+            agents[currentAgent].suggestedCleanParams.push(param);
+          }
+        }
+      }
+      
+      return;
+    }
+    
+    // Allow
+    const allowMatch = trimmed.match(/^Allow:\s*(.*)$/i);
+    if (allowMatch) {
+      const path = allowMatch[1].trim();
+      agents[currentAgent].rules.push({
+        type: 'allow',
+        path,
+        hash: generateHash(`allow:${path}`),
+        lineNumber: index + 1
+      });
+      return;
+    }
+    
+    // Clean-param
+    const cleanParamMatch = trimmed.match(/^Clean-param:\s*(.*)$/i);
+    if (cleanParamMatch) {
+      const path = cleanParamMatch[1].trim();
+      agents[currentAgent].hasCleanParam = true;
+      agents[currentAgent].rules.push({
+        type: 'clean-param',
+        path,
+        hash: generateHash(`clean-param:${path}`),
+        lineNumber: index + 1
+      });
+      return;
+    }
+    
+    // Sitemap
+    const sitemapMatch = trimmed.match(/^Sitemap:\s*(.*)$/i);
+    if (sitemapMatch) {
+      const path = sitemapMatch[1].trim();
+      agents[currentAgent].rules.push({
+        type: 'sitemap',
+        path,
+        hash: generateHash(`sitemap:${path}`),
+        lineNumber: index + 1
+      });
+      return;
+    }
+    
+    // Host
+    const hostMatch = trimmed.match(/^Host:\s*(.*)$/i);
+    if (hostMatch) {
+      const path = hostMatch[1].trim();
+      agents[currentAgent].rules.push({
+        type: 'host',
+        path,
+        hash: generateHash(`host:${path}`),
+        lineNumber: index + 1
+      });
+      return;
+    }
+    
+    // Crawl-delay
+    const crawlDelayMatch = trimmed.match(/^Crawl-delay:\s*(.*)$/i);
+    if (crawlDelayMatch) {
+      const path = crawlDelayMatch[1].trim();
+      agents[currentAgent].rules.push({
+        type: 'crawl-delay',
+        path,
+        hash: generateHash(`crawl-delay:${path}`),
+        lineNumber: index + 1
+      });
+      return;
+    }
+  });
+  
+  // Генерируем рекомендации для каждого агента
+  Object.values(agents).forEach(agent => {
+    const isGooglebot = agent.userAgent.toLowerCase().includes('google');
+    
+    // ОШИБКА: Блокировка CSS/JS
+    if (agent.cssJsBlocked) {
+      agent.errors.push('❌ CSS или JavaScript заблокированы');
+      agent.recommendations.push('Разрешите доступ к CSS и JavaScript файлам - поисковики не смогут корректно отрендерить страницы');
+      
+      if (isGooglebot) {
+        agent.recommendations.push('Google требует доступ к CSS/JS для правильного рендеринга страниц');
+      }
+    }
+    
+    // ОШИБКА: Блокировка изображений
+    if (agent.imagesBlocked) {
+      agent.errors.push('❌ Изображения заблокированы');
+      agent.recommendations.push('Разрешите доступ к изображениям - они не будут индексироваться в поиске по картинкам');
+    }
+    
+    // Рекомендация по Clean-param
+    if (agent.suggestedCleanParams.length > 0 && !agent.hasCleanParam) {
+      const isYandex = agent.userAgent.toLowerCase().includes('yandex');
+      
+      if (isYandex || agent.userAgent === '*') {
+        agent.recommendations.push(
+          `Добавьте Clean-param: ${agent.suggestedCleanParams.join('&')} для снижения дублей`
+        );
+      }
+    }
+    
+    // Рекомендация по Sitemap
+    const hasSitemap = agent.rules.some(r => r.type === 'sitemap');
+    if (!hasSitemap && agent.userAgent === '*') {
+      agent.warnings.push('⚠️ Отсутствует Sitemap');
+      agent.recommendations.push('Добавьте директиву Sitemap с путём к карте сайта');
+    }
+    
+    // Проверка конфликтов
+    const hasDisallowRoot = agent.rules.some(r => r.type === 'disallow' && r.path === '/');
+    const hasAllow = agent.rules.some(r => r.type === 'allow');
+    if (hasDisallowRoot && hasAllow) {
+      agent.warnings.push('⚠️ Конфликт: Disallow: / с директивами Allow');
+      agent.recommendations.push('Убедитесь что Allow директивы имеют приоритет над Disallow: /');
+    }
+  });
+  
+  return Object.values(agents);
+}
+
 function analyzeRobotsTxt(text: string, statusCode: number, url: string) {
   const checks: CheckResult[] = [];
   const lines = text.split('\n');
   
-  // Извлекаем информацию
-  const userAgents = extractUserAgents(lines);
-  const sitemaps = extractSitemaps(lines);
-  const hasHost = /^Host:/im.test(text);
-  const hasCleanParam = /^Clean-param:/im.test(text);
+  // Парсим по агентам
+  const agentRules = parseRobotsByAgent(text);
+  
+  // Извлекаем общую информацию
+  const userAgents = agentRules.map(a => a.userAgent);
+  const allSitemaps = agentRules.flatMap(a => a.rules.filter(r => r.type === 'sitemap').map(r => r.path));
+  const hasHost = agentRules.some(a => a.rules.some(r => r.type === 'host'));
+  const hasCleanParam = agentRules.some(a => a.hasCleanParam);
   
   // 1. ТЕХНИЧЕСКИЕ ПРОВЕРКИ
   
-  // Наличие файла
   if (statusCode === 200) {
     checks.push({
       category: 'Технические проверки',
@@ -109,100 +341,47 @@ function analyzeRobotsTxt(text: string, statusCode: number, url: string) {
     });
   }
   
-  // Кодировка (упрощенная проверка)
-  const hasBOM = text.charCodeAt(0) === 0xFEFF;
-  if (hasBOM) {
-    checks.push({
-      category: 'Технические проверки',
-      check: 'Кодировка файла',
-      status: '⚠️',
-      message: 'Обнаружен BOM (Byte Order Mark)',
-      recommendation: 'Используйте UTF-8 без BOM'
-    });
-  } else {
-    checks.push({
-      category: 'Технические проверки',
-      check: 'Кодировка файла',
-      status: '✅',
-      message: 'Кодировка корректна (UTF-8 без BOM)'
-    });
-  }
+  // 2. ДОСТУП К РЕСУРСАМ
   
-  // 2. СИНТАКСИС И ВАЛИДНОСТЬ
+  const anyCssJsBlocked = agentRules.some(a => a.cssJsBlocked);
+  const anyImagesBlocked = agentRules.some(a => a.imagesBlocked);
   
-  // User-agent
-  if (userAgents.length === 0) {
+  if (anyCssJsBlocked) {
     checks.push({
-      category: 'Синтаксис и валидность',
-      check: 'Директива User-agent',
+      category: 'Доступ к ресурсам',
+      check: 'CSS и JavaScript',
       status: '❌',
-      message: 'Не найдено ни одной директивы User-agent',
-      recommendation: 'Добавьте хотя бы "User-agent: *"'
+      message: 'Обнаружена блокировка CSS или JS файлов',
+      recommendation: 'Разрешите доступ к CSS/JS - поисковики не смогут правильно отрендерить страницы'
     });
   } else {
     checks.push({
-      category: 'Синтаксис и валидность',
-      check: 'Директива User-agent',
+      category: 'Доступ к ресурсам',
+      check: 'CSS и JavaScript',
       status: '✅',
-      message: `Найдено User-agent директив: ${userAgents.length}`
+      message: 'CSS и JavaScript доступны для индексации'
     });
   }
   
-  // Проверка синтаксиса путей
-  const invalidPaths = lines.filter(line => {
-    const match = line.match(/^(Disallow|Allow):\s*(.+)/i);
-    if (match) {
-      const path = match[2].trim();
-      return path && !path.startsWith('/') && !path.startsWith('*');
-    }
-    return false;
-  });
-  
-  if (invalidPaths.length > 0) {
+  if (anyImagesBlocked) {
     checks.push({
-      category: 'Синтаксис и валидность',
-      check: 'Корректность путей',
+      category: 'Доступ к ресурсам',
+      check: 'Изображения',
       status: '❌',
-      message: `Найдены некорректные пути (${invalidPaths.length} шт.)`,
-      recommendation: 'Пути должны начинаться с / или *'
+      message: 'Обнаружена блокировка изображений',
+      recommendation: 'Изображения не будут индексироваться в поиске по картинкам'
     });
   } else {
     checks.push({
-      category: 'Синтаксис и валидность',
-      check: 'Корректность путей',
+      category: 'Доступ к ресурсам',
+      check: 'Изображения',
       status: '✅',
-      message: 'Все пути корректны'
-    });
-  }
-  
-  // Пустые строки в блоках
-  let hasEmptyLinesInBlock = false;
-  let inBlock = false;
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (trimmed.startsWith('User-agent:')) {
-      inBlock = true;
-    } else if (trimmed === '' && inBlock) {
-      hasEmptyLinesInBlock = true;
-      inBlock = false;
-    } else if (trimmed !== '' && !trimmed.startsWith('#')) {
-      inBlock = true;
-    }
-  }
-  
-  if (hasEmptyLinesInBlock) {
-    checks.push({
-      category: 'Синтаксис и валидность',
-      check: 'Пустые строки',
-      status: '⚠️',
-      message: 'Обнаружены пустые строки внутри блоков директив',
-      recommendation: 'Удалите пустые строки между директивами одного блока'
+      message: 'Изображения доступны для индексации'
     });
   }
   
   // 3. СЕМАНТИЧЕСКИЕ ПРОВЕРКИ
   
-  // Host (для Яндекса)
   if (!hasHost) {
     checks.push({
       category: 'Семантические проверки',
@@ -212,27 +391,15 @@ function analyzeRobotsTxt(text: string, statusCode: number, url: string) {
       recommendation: 'Добавьте "Host: yourdomain.ru" для корректной работы с Яндексом'
     });
   } else {
-    const hostMatches = text.match(/^Host:\s*(.+)/img);
-    if (hostMatches && hostMatches.length > 1) {
-      checks.push({
-        category: 'Семантические проверки',
-        check: 'Директива Host',
-        status: '❌',
-        message: 'Найдено несколько директив Host',
-        recommendation: 'Яндекс поддерживает только одну директиву Host'
-      });
-    } else {
-      checks.push({
-        category: 'Семантические проверки',
-        check: 'Директива Host',
-        status: '✅',
-        message: 'Директива Host указана корректно'
-      });
-    }
+    checks.push({
+      category: 'Семантические проверки',
+      check: 'Директива Host',
+      status: '✅',
+      message: 'Директива Host указана'
+    });
   }
   
-  // Sitemap
-  if (sitemaps.length === 0) {
+  if (allSitemaps.length === 0) {
     checks.push({
       category: 'Семантические проверки',
       check: 'Директива Sitemap',
@@ -245,77 +412,7 @@ function analyzeRobotsTxt(text: string, statusCode: number, url: string) {
       category: 'Семантические проверки',
       check: 'Директива Sitemap',
       status: '✅',
-      message: `Найдено карт сайта: ${sitemaps.length}`
-    });
-  }
-  
-  // Clean-param
-  checks.push({
-    category: 'Семантические проверки',
-    check: 'Директива Clean-param',
-    status: hasCleanParam ? '✅' : 'ℹ️',
-    message: hasCleanParam ? 'Директива Clean-param найдена' : 'Директива Clean-param отсутствует',
-    recommendation: hasCleanParam ? undefined : 'Рекомендуется добавить для снижения дублей (только для Яндекса)'
-  });
-  
-  // Конфликты Allow/Disallow
-  const disallowAll = /^Disallow:\s*\/\s*$/im.test(text);
-  const hasAllow = /^Allow:/im.test(text);
-  
-  if (disallowAll && hasAllow) {
-    checks.push({
-      category: 'Семантические проверки',
-      check: 'Конфликты директив',
-      status: '⚠️',
-      message: 'Найден "Disallow: /" вместе с директивами Allow',
-      recommendation: 'Убедитесь что Allow директивы имеют приоритет'
-    });
-  } else {
-    checks.push({
-      category: 'Семантические проверки',
-      check: 'Конфликты директив',
-      status: '✅',
-      message: 'Явных конфликтов не обнаружено'
-    });
-  }
-  
-  // 4. ДОСТУП К РЕСУРСАМ
-  
-  // CSS/JS
-  const blocksCssJs = /^Disallow:.*\.(css|js)$/im.test(text);
-  if (blocksCssJs) {
-    checks.push({
-      category: 'Доступ к ресурсам',
-      check: 'CSS и JavaScript',
-      status: '❌',
-      message: 'Обнаружен запрет на индексацию CSS или JS файлов',
-      recommendation: 'Google не сможет правильно отрендерить страницы. Разрешите доступ к CSS/JS'
-    });
-  } else {
-    checks.push({
-      category: 'Доступ к ресурсам',
-      check: 'CSS и JavaScript',
-      status: '✅',
-      message: 'CSS и JavaScript доступны для индексации'
-    });
-  }
-  
-  // Изображения
-  const blocksImages = /^Disallow:.*\.(jpg|jpeg|png|gif|webp|svg)$/im.test(text);
-  if (blocksImages) {
-    checks.push({
-      category: 'Доступ к ресурсам',
-      check: 'Изображения',
-      status: '⚠️',
-      message: 'Обнаружен запрет на индексацию изображений',
-      recommendation: 'Изображения не будут индексироваться в Google Images'
-    });
-  } else {
-    checks.push({
-      category: 'Доступ к ресурсам',
-      check: 'Изображения',
-      status: '✅',
-      message: 'Изображения доступны для индексации'
+      message: `Найдено карт сайта: ${allSitemaps.length}`
     });
   }
   
@@ -333,30 +430,9 @@ function analyzeRobotsTxt(text: string, statusCode: number, url: string) {
     checks,
     summary,
     userAgents,
-    sitemaps,
+    sitemaps: allSitemaps,
     hasHost,
-    hasCleanParam
+    hasCleanParam,
+    agentRules
   };
-}
-
-function extractUserAgents(lines: string[]): string[] {
-  const agents = new Set<string>();
-  lines.forEach(line => {
-    const match = line.match(/^User-agent:\s*(.+)/i);
-    if (match) {
-      agents.add(match[1].trim());
-    }
-  });
-  return Array.from(agents);
-}
-
-function extractSitemaps(lines: string[]): string[] {
-  const maps: string[] = [];
-  lines.forEach(line => {
-    const match = line.match(/^Sitemap:\s*(.+)/i);
-    if (match) {
-      maps.push(match[1].trim());
-    }
-  });
-  return maps;
 }
