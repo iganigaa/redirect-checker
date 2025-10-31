@@ -10,6 +10,7 @@ export default function Navigation() {
     { href: '/', label: 'Проверка редиректов' },
     { href: '/clean-param', label: 'Генератор Clean-param' },
     { href: '/robots-tester', label: 'Тестер robots.txt' },
+    { href: '/traffic-calculator', label: 'Калькулятор трафика' },
   ];
   
   return (
