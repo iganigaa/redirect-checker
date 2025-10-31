@@ -1,171 +1,214 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+interface QueryRow {
+  position: number;
+  ctr: number;
+}
+
+interface GroupedPosition {
+  position: number;
+  count: number;
+  ctr: number;
+  ktraf: number;
+  realCount: number;
+  optCount: number;
+  ktrafReal: number;
+  ktrafOpt: number;
+}
+
+interface CalculationResult {
+  results: GroupedPosition[];
+  summary: {
+    currentTraffic: number;
+    realisticTraffic: number;
+    optimisticTraffic: number;
+    realisticGrowth: number;
+    optimisticGrowth: number;
+    realisticGrowthPercent: number;
+    optimisticGrowthPercent: number;
+  };
+}
+
+function parseCSV(csvText: string): QueryRow[] {
+  const lines = csvText.trim().split('\n');
+  const data: QueryRow[] = [];
+  
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    
+    const parts = line.split(',');
+    if (parts.length < 5) continue;
+    
+    // Позиция - 5-я колонка (индекс 4)
+    // CTR - 4-я колонка (индекс 3)
+    const position = parseFloat(parts[4]);
+    let ctr = parts[3].trim();
+    ctr = ctr.replace('%', '');
+    const ctrValue = parseFloat(ctr);
+    
+    if (!isNaN(position) && !isNaN(ctrValue) && position >= 1 && position <= 10) {
+      data.push({ position: Math.round(position), ctr: ctrValue });
+    }
+  }
+  
+  return data;
+}
+
+function calculateMedian(values: number[]): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0
+    ? (sorted[mid - 1] + sorted[mid]) / 2
+    : sorted[mid];
+}
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     
     const csvFile = formData.get('csvFile') as File;
-    const newQueriesFile = formData.get('newQueriesFile') as File | null;
     const minGrowth = parseFloat(formData.get('minGrowth') as string) || 0;
     const maxGrowth = parseFloat(formData.get('maxGrowth') as string) || 0;
-    let newQueries = parseInt(formData.get('newQueries') as string) || 0;
+    const newQueries = parseInt(formData.get('newQueries') as string) || 0;
 
     if (!csvFile) {
       return NextResponse.json({ error: 'CSV файл обязателен' }, { status: 400 });
     }
 
-    // Парсим основной CSV
     const csvText = await csvFile.text();
     const data = parseCSV(csvText);
 
-    // Если есть файл с новыми запросами и не указано количество
-    if (newQueries === 0 && newQueriesFile) {
-      const newQueriesText = await newQueriesFile.text();
-      const newQueriesData = parseCSV(newQueriesText);
-      newQueries = newQueriesData.reduce((sum, row) => {
-        const count = parseInt(row['Количество'] || row['количество'] || '0');
-        return sum + count;
-      }, 0);
+    if (data.length === 0) {
+      return NextResponse.json(
+        { error: 'Не удалось распарсить данные. Проверьте формат CSV.' },
+        { status: 400 }
+      );
     }
 
-    // Обработка данных
-    const result = calculateTraffic(data, minGrowth, maxGrowth, newQueries);
+    // Группировка по позициям
+    const grouped = new Map<number, number[]>();
+    for (let i = 1; i <= 10; i++) {
+      grouped.set(i, []);
+    }
+
+    data.forEach(row => {
+      const ctrs = grouped.get(row.position);
+      if (ctrs) {
+        ctrs.push(row.ctr);
+      }
+    });
+
+    // Создаём сводную таблицу
+    const summary: GroupedPosition[] = [];
+    for (let i = 1; i <= 10; i++) {
+      const ctrs = grouped.get(i) || [];
+      if (ctrs.length > 0) {
+        const count = ctrs.length;
+        const medianCtr = calculateMedian(ctrs);
+        const ktraf = count * (medianCtr / 100);
+        
+        summary.push({
+          position: i,
+          count,
+          ctr: medianCtr,
+          ktraf,
+          realCount: 0,
+          optCount: 0,
+          ktrafReal: 0,
+          ktrafOpt: 0
+        });
+      }
+    }
+
+    // Расчёт средней позиции
+    const totalCounts = summary.reduce((sum, s) => sum + s.count, 0);
+    const meanPosition = summary.reduce((sum, s) => sum + s.position * s.count, 0) / totalCounts;
+
+    // Преобразуем проценты в новые средние позиции
+    const meanRealistic = meanPosition * (1 - minGrowth / 100);
+    const meanOptimistic = meanPosition * (1 - maxGrowth / 100);
+
+    // Расчёт дельт
+    const deltaReal = meanPosition - meanRealistic;
+    const deltaOpt = meanPosition - meanOptimistic;
+
+    // p1 - доля на первой позиции
+    const p1 = summary[0] ? summary[0].count / totalCounts : 0;
+
+    // Коэффициенты сдвига
+    const calcS = (delta: number) => {
+      if ((1 - p1) === 0) return 0;
+      const s = delta / (1 - p1);
+      return Math.min(Math.max(s, 0), 1);
+    };
+
+    const sRealistic = calcS(deltaReal);
+    const sOptimistic = calcS(deltaOpt);
+
+    // Функция сдвига запросов
+    const shiftCounts = (s: number) => {
+      const adjusted = summary.map(item => item.count);
+      for (let i = 1; i < adjusted.length; i++) {
+        const shift = s * adjusted[i];
+        adjusted[i] -= shift;
+        adjusted[i - 1] += shift;
+      }
+      return adjusted;
+    };
+
+    const adjustedReal = shiftCounts(sRealistic);
+    const adjustedOpt = shiftCounts(sOptimistic);
+
+    // Распределение новых запросов
+    const totalReal = adjustedReal.reduce((sum, val) => sum + val, 0);
+    const totalOpt = adjustedOpt.reduce((sum, val) => sum + val, 0);
+
+    const probReal = adjustedReal.map(val => val / totalReal);
+    const probOpt = adjustedOpt.map(val => val / totalOpt);
+
+    const newReal = probReal.map(prob => Math.round(prob * newQueries));
+    const newOpt = probOpt.map(prob => Math.round(prob * newQueries));
+
+    // Финальные расчёты
+    summary.forEach((item, index) => {
+      item.realCount = Math.round(adjustedReal[index]) + newReal[index];
+      item.optCount = Math.round(adjustedOpt[index]) + newOpt[index];
+      item.ktrafReal = item.realCount * (item.ctr / 100);
+      item.ktrafOpt = item.optCount * (item.ctr / 100);
+    });
+
+    // Итоги
+    const currentTraffic = summary.reduce((sum, s) => sum + s.ktraf, 0);
+    const realisticTraffic = summary.reduce((sum, s) => sum + s.ktrafReal, 0);
+    const optimisticTraffic = summary.reduce((sum, s) => sum + s.ktrafOpt, 0);
+
+    const realisticGrowth = realisticTraffic - currentTraffic;
+    const optimisticGrowth = optimisticTraffic - currentTraffic;
+    const realisticGrowthPercent = (realisticGrowth / currentTraffic) * 100;
+    const optimisticGrowthPercent = (optimisticGrowth / currentTraffic) * 100;
+
+    const result: CalculationResult = {
+      results: summary,
+      summary: {
+        currentTraffic: Math.round(currentTraffic * 100) / 100,
+        realisticTraffic: Math.round(realisticTraffic * 100) / 100,
+        optimisticTraffic: Math.round(optimisticTraffic * 100) / 100,
+        realisticGrowth: Math.round(realisticGrowth * 100) / 100,
+        optimisticGrowth: Math.round(optimisticGrowth * 100) / 100,
+        realisticGrowthPercent: Math.round(realisticGrowthPercent * 100) / 100,
+        optimisticGrowthPercent: Math.round(optimisticGrowthPercent * 100) / 100
+      }
+    };
 
     return NextResponse.json(result);
-  } catch (error: any) {
-    return NextResponse.json({ 
-      error: error.message || 'Ошибка при расчете' 
-    }, { status: 500 });
+    
+  } catch (error) {
+    console.error('Ошибка при расчете:', error);
+    return NextResponse.json(
+      { error: 'Внутренняя ошибка сервера' },
+      { status: 500 }
+    );
   }
-}
-
-function parseCSV(text: string): any[] {
-  const lines = text.trim().split('\n');
-  const headers = lines[0].split(',').map(h => h.trim());
-  
-  return lines.slice(1).map(line => {
-    const values = line.split(',');
-    const row: any = {};
-    headers.forEach((header, index) => {
-      row[header] = values[index]?.trim() || '';
-    });
-    return row;
-  });
-}
-
-function calculateTraffic(data: any[], minGrowth: number, maxGrowth: number, newQueries: number) {
-  // Фильтруем и обрабатываем данные
-  const processedData = data
-    .map(row => ({
-      position: Math.round(parseFloat(row['Позиция'] || row['position'] || '0')),
-      ctr: parseFloat((row['CTR'] || row['ctr'] || '0').toString().replace('%', ''))
-    }))
-    .filter(row => row.position >= 1 && row.position <= 10);
-
-  // Группируем по позициям
-  const grouped: { [key: number]: { count: number; ctrs: number[] } } = {};
-  
-  processedData.forEach(row => {
-    if (!grouped[row.position]) {
-      grouped[row.position] = { count: 0, ctrs: [] };
-    }
-    grouped[row.position].count++;
-    grouped[row.position].ctrs.push(row.ctr);
-  });
-
-  // Создаем сводку
-  const summary = Object.entries(grouped)
-    .map(([pos, data]) => ({
-      position: parseInt(pos),
-      count: data.count,
-      ctr: median(data.ctrs),
-      ktraf: data.count * (median(data.ctrs) / 100)
-    }))
-    .sort((a, b) => a.position - b.position);
-
-  // Расчет средней позиции
-  const totalCount = summary.reduce((sum, row) => sum + row.count, 0);
-  const currentMeanPosition = summary.reduce((sum, row) => sum + (row.position * row.count), 0) / totalCount;
-
-  // Преобразование процентов в целевые средние позиции
-  const realisticMeanPosition = currentMeanPosition * (1 - minGrowth / 100);
-  const optimisticMeanPosition = currentMeanPosition * (1 - maxGrowth / 100);
-
-  // Расчет сдвигов
-  const counts = summary.map(r => r.count);
-  const p1 = counts[0] / totalCount;
-
-  const calcShift = (targetMean: number) => {
-    const delta = currentMeanPosition - targetMean;
-    const s = delta / (1 - p1);
-    return Math.min(Math.max(s, 0), 1);
-  };
-
-  const sRealistic = calcShift(realisticMeanPosition);
-  const sOptimistic = calcShift(optimisticMeanPosition);
-
-  // Применяем сдвиги
-  const shiftCounts = (s: number) => {
-    const adjusted = [...counts];
-    for (let i = 1; i < adjusted.length; i++) {
-      const shift = s * adjusted[i];
-      adjusted[i] -= shift;
-      adjusted[i - 1] += shift;
-    }
-    return adjusted;
-  };
-
-  const adjustedRealistic = shiftCounts(sRealistic);
-  const adjustedOptimistic = shiftCounts(sOptimistic);
-
-  // Добавляем новые запросы
-  const totalRealistic = adjustedRealistic.reduce((a, b) => a + b, 0);
-  const totalOptimistic = adjustedOptimistic.reduce((a, b) => a + b, 0);
-
-  const probRealistic = adjustedRealistic.map(c => c / totalRealistic);
-  const probOptimistic = adjustedOptimistic.map(c => c / totalOptimistic);
-
-  const newRealistic = probRealistic.map(p => Math.round(p * newQueries));
-  const newOptimistic = probOptimistic.map(p => Math.round(p * newQueries));
-
-  // Формируем финальную таблицу
-  const finalSummary = summary.map((row, index) => ({
-    position: row.position,
-    count: row.count,
-    ctr: row.ctr,
-    ktraf: row.ktraf,
-    realCount: Math.round(adjustedRealistic[index]) + newRealistic[index],
-    optCount: Math.round(adjustedOptimistic[index]) + newOptimistic[index],
-    ktrafReal: (Math.round(adjustedRealistic[index]) + newRealistic[index]) * (row.ctr / 100),
-    ktrafOpt: (Math.round(adjustedOptimistic[index]) + newOptimistic[index]) * (row.ctr / 100)
-  }));
-
-  // Расчет роста трафика
-  const currentTraffic = summary.reduce((sum, row) => sum + row.ktraf, 0);
-  const realisticTraffic = finalSummary.reduce((sum, row) => sum + row.ktrafReal, 0);
-  const optimisticTraffic = finalSummary.reduce((sum, row) => sum + row.ktrafOpt, 0);
-
-  const realisticGrowth = ((realisticTraffic - currentTraffic) / currentTraffic) * 100;
-  const optimisticGrowth = ((optimisticTraffic - currentTraffic) / currentTraffic) * 100;
-
-  return {
-    summary: finalSummary,
-    currentMeanPosition,
-    realisticMeanPosition,
-    optimisticMeanPosition,
-    currentTraffic,
-    realisticTraffic,
-    optimisticTraffic,
-    realisticGrowth,
-    optimisticGrowth
-  };
-}
-
-function median(arr: number[]): number {
-  if (arr.length === 0) return 0;
-  const sorted = [...arr].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 === 0
-    ? (sorted[mid - 1] + sorted[mid]) / 2
-    : sorted[mid];
 }

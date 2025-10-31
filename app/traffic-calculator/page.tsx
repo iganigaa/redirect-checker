@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
-import axios from 'axios';
+import React, { useState } from 'react';
+import { Upload, Download, TrendingUp, Info } from 'lucide-react';
+import Navigation from '@/components/Navigation';
 
-interface PositionData {
+interface GroupedPosition {
   position: number;
   count: number;
   ctr: number;
@@ -15,315 +16,334 @@ interface PositionData {
 }
 
 interface CalculationResult {
-  summary: PositionData[];
-  currentMeanPosition: number;
-  realisticMeanPosition: number;
-  optimisticMeanPosition: number;
-  currentTraffic: number;
-  realisticTraffic: number;
-  optimisticTraffic: number;
-  realisticGrowth: number;
-  optimisticGrowth: number;
+  results: GroupedPosition[];
+  summary: {
+    currentTraffic: number;
+    realisticTraffic: number;
+    optimisticTraffic: number;
+    realisticGrowth: number;
+    optimisticGrowth: number;
+    realisticGrowthPercent: number;
+    optimisticGrowthPercent: number;
+  };
 }
 
 export default function TrafficCalculatorPage() {
   const [csvFile, setCsvFile] = useState<File | null>(null);
-  const [newQueriesFile, setNewQueriesFile] = useState<File | null>(null);
   const [minGrowth, setMinGrowth] = useState<number>(0);
   const [maxGrowth, setMaxGrowth] = useState<number>(0);
   const [newQueries, setNewQueries] = useState<number>(0);
-  const [result, setResult] = useState<CalculationResult | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [result, setResult] = useState<CalculationResult | null>(null);
+  const [error, setError] = useState<string>('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setCsvFile(e.target.files[0]);
+      setError('');
+      setResult(null);
+    }
+  };
+
+  const handleCalculate = async () => {
     if (!csvFile) {
-      setError('Загрузите CSV файл с данными позиций');
+      setError('Пожалуйста, загрузите CSV файл');
       return;
     }
 
     setLoading(true);
     setError('');
-    setResult(null);
-
-    const formData = new FormData();
-    formData.append('csvFile', csvFile);
-    if (newQueriesFile) {
-      formData.append('newQueriesFile', newQueriesFile);
-    }
-    formData.append('minGrowth', minGrowth.toString());
-    formData.append('maxGrowth', maxGrowth.toString());
-    formData.append('newQueries', newQueries.toString());
 
     try {
-      const response = await axios.post('/api/traffic-calculator', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+      const formData = new FormData();
+      formData.append('csvFile', csvFile);
+      formData.append('minGrowth', minGrowth.toString());
+      formData.append('maxGrowth', maxGrowth.toString());
+      formData.append('newQueries', newQueries.toString());
+
+      const response = await fetch('/api/traffic-calculator', {
+        method: 'POST',
+        body: formData,
       });
-      
-      setResult(response.data);
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Ошибка при расчете');
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Ошибка при расчете');
+      }
+
+      const data: CalculationResult = await response.json();
+      setResult(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Произошла ошибка');
     } finally {
       setLoading(false);
     }
   };
 
-  const downloadExample = () => {
-    const exampleData = 'Позиция,CTR\n1,35.5%\n2,15.2%\n3,10.1%\n4,7.5%\n5,5.2%';
-    const blob = new Blob([exampleData], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'example.csv';
-    a.click();
+  const downloadExampleCSV = () => {
+    const exampleData = `Популярные запросы,Клики,Показы,CTR,Позиция
+rush academy,319,579,55.09%,7
+раш академия,100,137,72.99%,1
+rush academy seo,30,53,56.6%,1
+seo стажировка,14,152,9.21%,8
+seo курсы бесплатно,9,762,1.18%,5`;
+
+    const blob = new Blob([exampleData], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'example_gsc_data.csv';
+    link.click();
+  };
+
+  const exportResults = () => {
+    if (!result) return;
+
+    let csvContent = 'Позиция,Count,Ktraf,CTR,Real count,Opt count,Ktraf real,Ktraf opt\n';
+    result.results.forEach(row => {
+      csvContent += `${row.position},${row.count},${row.ktraf.toFixed(4)},${row.ctr.toFixed(2)},${row.realCount},${row.optCount},${row.ktrafReal.toFixed(4)},${row.ktrafOpt.toFixed(4)}\n`;
+    });
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'traffic_forecast_results.csv';
+    link.click();
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
-            Калькулятор SEO трафика
-          </h1>
-          <p className="text-gray-600">
-            Прогноз изменения органического трафика на основе роста позиций
-          </p>
-        </div>
+    <>
+      <Navigation />
+      <div className="min-h-screen bg-gray-50">
+        <div className="container mx-auto px-4 py-8 max-w-6xl">
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h1 className="text-3xl font-bold mb-2">Калькулятор SEO трафика</h1>
+            <p className="text-gray-600 mb-6">
+              Прогноз изменения органического трафика на основе роста позиций
+            </p>
 
-        <div className="grid md:grid-cols-2 gap-8">
-          {/* Левая колонка - ввод */}
-          <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-semibold mb-4 text-gray-800">Входные данные</h2>
-              
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Основной CSV */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    CSV файл с позициями *
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <div className="flex gap-2 items-start">
+                <Info className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-gray-700">
+                  <p className="font-semibold mb-2">Как использовать:</p>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>Загрузите CSV из Google Search Console с колонками: Запросы, Клики, Показы, CTR, Позиция</li>
+                    <li>Укажите минимальный и максимальный рост средней позиции в процентах</li>
+                    <li>Добавьте количество новых запросов (опционально)</li>
+                    <li>Получите прогноз реалистичного и оптимистичного сценариев</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4 mb-6">
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium mb-2">CSV файл с позициями *</label>
+                <div className="flex gap-2">
+                  <label className="flex-1 cursor-pointer">
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-blue-500 transition-colors">
+                      <div className="flex items-center justify-center gap-2 text-gray-600">
+                        <Upload className="w-5 h-5" />
+                        <span className="text-sm">
+                          {csvFile ? csvFile.name : 'Выберите файл или перетащите сюда'}
+                        </span>
+                      </div>
+                    </div>
+                    <input
+                      type="file"
+                      accept=".csv,.txt"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
                   </label>
-                  <input
-                    type="file"
-                    accept=".csv"
-                    onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Формат: Позиция, CTR (например: 1, 35.5%)
-                  </p>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Формат: Позиция, CTR (например: 1, 35.5%)
+                </p>
+                <button
+                  onClick={downloadExampleCSV}
+                  className="mt-2 text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                >
+                  <Download className="w-4 h-4" />
+                  Скачать пример CSV
+                </button>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Минимальный рост средней позиции (%)
+                </label>
+                <input
+                  type="number"
+                  value={minGrowth}
+                  onChange={(e) => setMinGrowth(parseFloat(e.target.value) || 0)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="0"
+                  step="0.1"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Реалистичный сценарий улучшения позиций
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Максимальный рост средней позиции (%)
+                </label>
+                <input
+                  type="number"
+                  value={maxGrowth}
+                  onChange={(e) => setMaxGrowth(parseFloat(e.target.value) || 0)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="0"
+                  step="0.1"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Оптимистичный сценарий улучшения позиций
+                </p>
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium mb-2">
+                  Количество новых запросов
+                </label>
+                <input
+                  type="number"
+                  value={newQueries}
+                  onChange={(e) => setNewQueries(parseInt(e.target.value) || 0)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="0"
+                />
+              </div>
+            </div>
+
+            <button
+              onClick={handleCalculate}
+              disabled={loading || !csvFile}
+              className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-medium flex items-center justify-center gap-2"
+            >
+              <TrendingUp className="w-5 h-5" />
+              {loading ? 'Расчет...' : 'Рассчитать прогноз'}
+            </button>
+
+            {error && (
+              <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+                {error}
+              </div>
+            )}
+          </div>
+
+          {result && (
+            <>
+              <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+                <h2 className="text-2xl font-bold mb-4">Общие итоги</h2>
+                
+                <div className="grid md:grid-cols-3 gap-4 mb-6">
+                  <div className="bg-gray-50 p-4 rounded-lg border-2 border-gray-200">
+                    <div className="text-sm text-gray-600 mb-1">Текущий трафик (Ktraf)</div>
+                    <div className="text-3xl font-bold text-gray-900">
+                      {result.summary.currentTraffic.toFixed(2)}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">тысяч посетителей</div>
+                  </div>
+                  
+                  <div className="bg-blue-50 p-4 rounded-lg border-2 border-blue-200">
+                    <div className="text-sm text-gray-600 mb-1">Реалистичный прогноз</div>
+                    <div className="text-3xl font-bold text-blue-600">
+                      {result.summary.realisticTraffic.toFixed(2)}
+                    </div>
+                    <div className="text-sm text-blue-600 mt-1 font-semibold">
+                      +{result.summary.realisticGrowthPercent.toFixed(2)}%
+                    </div>
+                  </div>
+                  
+                  <div className="bg-green-50 p-4 rounded-lg border-2 border-green-200">
+                    <div className="text-sm text-gray-600 mb-1">Оптимистичный прогноз</div>
+                    <div className="text-3xl font-bold text-green-600">
+                      {result.summary.optimisticTraffic.toFixed(2)}
+                    </div>
+                    <div className="text-sm text-green-600 mt-1 font-semibold">
+                      +{result.summary.optimisticGrowthPercent.toFixed(2)}%
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <h3 className="font-semibold text-gray-900 mb-2">Что это значит?</h3>
+                  <ul className="text-sm text-gray-700 space-y-1">
+                    <li>• <strong>Текущая ситуация:</strong> Ваши запросы приносят около {result.summary.currentTraffic.toFixed(0)} тысяч посетителей в месяц</li>
+                    <li>• <strong>Реалистичный прогноз:</strong> Трафик может вырасти до {result.summary.realisticTraffic.toFixed(0)} тысяч (+{result.summary.realisticGrowthPercent.toFixed(0)}%)</li>
+                    <li>• <strong>Оптимистичный прогноз:</strong> В лучшем случае до {result.summary.optimisticTraffic.toFixed(0)} тысяч (+{result.summary.optimisticGrowthPercent.toFixed(0)}%)</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-2xl font-bold">Детальная таблица</h2>
                   <button
-                    type="button"
-                    onClick={downloadExample}
-                    className="mt-2 text-xs text-blue-600 hover:text-blue-800"
+                    onClick={exportResults}
+                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
                   >
-                    📥 Скачать пример CSV
+                    <Download className="w-4 h-4" />
+                    Экспорт CSV
                   </button>
                 </div>
 
-                {/* Минимальный рост позиций */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Минимальный рост средней позиции (%)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={minGrowth}
-                    onChange={(e) => setMinGrowth(parseFloat(e.target.value) || 0)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    placeholder="Например: 10"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Реалистичный сценарий улучшения позиций
-                  </p>
-                </div>
-
-                {/* Максимальный рост позиций */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Максимальный рост средней позиции (%)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={maxGrowth}
-                    onChange={(e) => setMaxGrowth(parseFloat(e.target.value) || 0)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    placeholder="Например: 25"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Оптимистичный сценарий улучшения позиций
-                  </p>
-                </div>
-
-                {/* Новые запросы */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Количество новых запросов
-                  </label>
-                  <input
-                    type="number"
-                    step="1"
-                    value={newQueries}
-                    onChange={(e) => setNewQueries(parseInt(e.target.value) || 0)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    placeholder="Например: 100"
-                  />
-                </div>
-
-                {/* CSV с новыми запросами (опционально) */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    CSV с новыми запросами (необязательно)
-                  </label>
-                  <input
-                    type="file"
-                    accept=".csv"
-                    onChange={(e) => setNewQueriesFile(e.target.files?.[0] || null)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Если не указано количество выше, можно загрузить CSV
-                  </p>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium transition-colors"
-                >
-                  {loading ? 'Расчет...' : '📊 Рассчитать прогноз'}
-                </button>
-              </form>
-
-              {error && (
-                <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-red-800 text-sm">{error}</p>
-                </div>
-              )}
-            </div>
-
-            {/* Справка */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h3 className="font-semibold text-blue-900 mb-2">💡 Как использовать?</h3>
-              <ul className="text-sm text-blue-800 space-y-2">
-                <li>1. Загрузите CSV с текущими позициями и CTR</li>
-                <li>2. Укажите ожидаемый рост позиций в %</li>
-                <li>3. Добавьте количество новых запросов (опционально)</li>
-                <li>4. Получите прогноз трафика</li>
-              </ul>
-            </div>
-          </div>
-
-          {/* Правая колонка - результаты */}
-          {result && (
-            <div className="space-y-6">
-              {/* Сводка */}
-              <div className="bg-white rounded-lg shadow-md p-6">
-                <h2 className="text-xl font-semibold mb-4 text-gray-800">📈 Прогноз трафика</h2>
-                
-                <div className="space-y-4">
-                  {/* Текущие показатели */}
-                  <div className="p-4 bg-gray-50 rounded-lg">
-                    <div className="text-sm text-gray-600 mb-1">Текущая средняя позиция</div>
-                    <div className="text-2xl font-bold text-gray-900">
-                      {result.currentMeanPosition.toFixed(2)}
-                    </div>
-                    <div className="text-sm text-gray-600 mt-2">Текущий трафик (условный)</div>
-                    <div className="text-xl font-semibold text-gray-700">
-                      {result.currentTraffic.toFixed(0)}
-                    </div>
-                  </div>
-
-                  {/* Реалистичный сценарий */}
-                  <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="text-sm font-medium text-green-900">
-                        Реалистичный сценарий
-                      </div>
-                      <div className="text-lg font-bold text-green-600">
-                        +{result.realisticGrowth.toFixed(1)}%
-                      </div>
-                    </div>
-                    <div className="text-sm text-green-800">
-                      Средняя позиция: {result.realisticMeanPosition.toFixed(2)}
-                    </div>
-                    <div className="text-sm text-green-800">
-                      Прогноз трафика: {result.realisticTraffic.toFixed(0)}
-                    </div>
-                  </div>
-
-                  {/* Оптимистичный сценарий */}
-                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="text-sm font-medium text-blue-900">
-                        Оптимистичный сценарий
-                      </div>
-                      <div className="text-lg font-bold text-blue-600">
-                        +{result.optimisticGrowth.toFixed(1)}%
-                      </div>
-                    </div>
-                    <div className="text-sm text-blue-800">
-                      Средняя позиция: {result.optimisticMeanPosition.toFixed(2)}
-                    </div>
-                    <div className="text-sm text-blue-800">
-                      Прогноз трафика: {result.optimisticTraffic.toFixed(0)}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Таблица по позициям */}
-              <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                <div className="p-6 border-b border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-800">
-                    Распределение по позициям
-                  </h3>
-                </div>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-4 py-3 text-left font-semibold text-gray-700">Поз.</th>
-                        <th className="px-4 py-3 text-right font-semibold text-gray-700">Сейчас</th>
-                        <th className="px-4 py-3 text-right font-semibold text-gray-700">CTR%</th>
-                        <th className="px-4 py-3 text-right font-semibold text-gray-700">Реал.</th>
-                        <th className="px-4 py-3 text-right font-semibold text-gray-700">Опт.</th>
+                  <table className="w-full border-collapse text-sm">
+                    <thead>
+                      <tr className="bg-gray-100">
+                        <th className="border border-gray-300 px-3 py-2 text-left">Позиция</th>
+                        <th className="border border-gray-300 px-3 py-2 text-right">Count</th>
+                        <th className="border border-gray-300 px-3 py-2 text-right">CTR (%)</th>
+                        <th className="border border-gray-300 px-3 py-2 text-right">Ktraf</th>
+                        <th className="border border-gray-300 px-3 py-2 text-right bg-blue-50">Real count</th>
+                        <th className="border border-gray-300 px-3 py-2 text-right bg-green-50">Opt count</th>
+                        <th className="border border-gray-300 px-3 py-2 text-right bg-blue-50">Ktraf real</th>
+                        <th className="border border-gray-300 px-3 py-2 text-right bg-green-50">Ktraf opt</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {result.summary.map((row, index) => (
-                        <tr key={index} className="border-t border-gray-200">
-                          <td className="px-4 py-3 font-medium text-gray-900">
-                            {row.position}
-                          </td>
-                          <td className="px-4 py-3 text-right text-gray-700">
-                            {row.count}
-                          </td>
-                          <td className="px-4 py-3 text-right text-gray-700">
-                            {row.ctr.toFixed(1)}%
-                          </td>
-                          <td className="px-4 py-3 text-right text-green-600 font-medium">
-                            {row.realCount}
-                          </td>
-                          <td className="px-4 py-3 text-right text-blue-600 font-medium">
-                            {row.optCount}
-                          </td>
+                      {result.results.map((row, index) => (
+                        <tr key={index} className="hover:bg-gray-50">
+                          <td className="border border-gray-300 px-3 py-2 font-semibold">{row.position}</td>
+                          <td className="border border-gray-300 px-3 py-2 text-right">{row.count}</td>
+                          <td className="border border-gray-300 px-3 py-2 text-right">{row.ctr.toFixed(2)}</td>
+                          <td className="border border-gray-300 px-3 py-2 text-right">{row.ktraf.toFixed(4)}</td>
+                          <td className="border border-gray-300 px-3 py-2 text-right bg-blue-50">{row.realCount}</td>
+                          <td className="border border-gray-300 px-3 py-2 text-right bg-green-50">{row.optCount}</td>
+                          <td className="border border-gray-300 px-3 py-2 text-right bg-blue-50 font-semibold">{row.ktrafReal.toFixed(4)}</td>
+                          <td className="border border-gray-300 px-3 py-2 text-right bg-green-50 font-semibold">{row.ktrafOpt.toFixed(4)}</td>
                         </tr>
                       ))}
+                      <tr className="bg-gray-100 font-bold">
+                        <td colSpan={3} className="border border-gray-300 px-3 py-2">ИТОГО</td>
+                        <td className="border border-gray-300 px-3 py-2 text-right">{result.summary.currentTraffic.toFixed(2)}</td>
+                        <td colSpan={2} className="border border-gray-300 px-3 py-2"></td>
+                        <td className="border border-gray-300 px-3 py-2 text-right bg-blue-100">{result.summary.realisticTraffic.toFixed(2)}</td>
+                        <td className="border border-gray-300 px-3 py-2 text-right bg-green-100">{result.summary.optimisticTraffic.toFixed(2)}</td>
+                      </tr>
                     </tbody>
                   </table>
                 </div>
+
+                <div className="mt-6 bg-gray-50 p-4 rounded-lg text-xs text-gray-600">
+                  <h4 className="font-semibold text-gray-900 mb-2">Объяснение колонок:</h4>
+                  <div className="grid md:grid-cols-2 gap-2">
+                    <div><strong>Count</strong> - количество запросов на позиции</div>
+                    <div><strong>CTR</strong> - медиана кликабельности</div>
+                    <div><strong>Ktraf</strong> - текущий трафик (тыс.)</div>
+                    <div><strong>Real count</strong> - реалистичный прогноз запросов</div>
+                    <div><strong>Opt count</strong> - оптимистичный прогноз запросов</div>
+                    <div><strong>Ktraf real/opt</strong> - прогноз трафика</div>
+                  </div>
+                </div>
               </div>
-            </div>
+            </>
           )}
         </div>
       </div>
-    </div>
+    </>
   );
 }
