@@ -1,191 +1,258 @@
 'use client';
 
-import { useState } from 'react';
-import axios from 'axios';
+import Image from 'next/image';
+import Link from 'next/link';
+import { Send, Youtube, MessageCircle } from 'lucide-react';
 
-interface Result {
-  number: number;
-  checkName: string;
-  url: string;
-  expected: string;
-  statusCode: number | null;
-  redirectChain: string[];
-  status: '✅' | '❌' | '⚠️';
-  message: string;
-}
-
-export default function Home() {
-  const [url, setUrl] = useState('');
-  const [userAgent, setUserAgent] = useState('Googlebot Smartphone');
-  const [results, setResults] = useState<Result[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-    setResults([]);
-    
-    try {
-      const response = await axios.post('/api/check-redirects', {
-        url,
-        userAgent
-      });
-      
-      setResults(response.data.results);
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Ошибка при проверке сайта');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const successCount = results.filter(r => r.status === '✅').length;
-  const warningCount = results.filter(r => r.status === '⚠️').length;
-  const errorCount = results.filter(r => r.status === '❌').length;
-
+export default function DashboardHome() {
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
-            Проверка основных редиректов сайта
-          </h1>
-          <p className="text-gray-600">
-            Комплексная проверка редиректов по 11 критериям
-          </p>
-        </div>
-        
-        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-          <h2 className="text-xl font-semibold mb-4 text-gray-800">Настройки</h2>
-          
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Основной адрес сайта
-              </label>
-              <input
-                type="url"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="https://example.com/"
-                required
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="max-w-6xl mx-auto px-6 py-12">
+        {/* Author Section - No Background */}
+        <div className="grid md:grid-cols-[auto_1fr] gap-12 items-start mb-12">
+          {/* Left - Circular Photo with Yellow Background */}
+          <div className="relative">
+            <div className="w-64 h-64 rounded-full bg-gradient-to-br from-yellow-200 to-yellow-300 flex items-end justify-center overflow-hidden shadow-lg">
+              <Image
+                src="/фавикон.png"
+                alt="Игорь Бурдуков"
+                width={256}
+                height={280}
+                className="object-cover object-top"
+                priority
               />
             </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                User-Agent
-              </label>
-              <select
-                value={userAgent}
-                onChange={(e) => setUserAgent(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-              >
-                <option>Googlebot Smartphone</option>
-                <option>Googlebot Desktop</option>
-                <option>YandexBot</option>
-                <option>BingBot</option>
-              </select>
-            </div>
-            
-            <div className="flex items-center gap-4">
-              <button
-                type="submit"
-                disabled={loading}
-                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
-              >
-                {loading ? 'Проверка...' : 'Проверить сайт'}
-              </button>
-              
-              {loading && (
-                <span className="text-gray-500 text-sm">≈ 1-2 минуты</span>
-              )}
-            </div>
-          </form>
+          </div>
 
-          {error && (
-            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-red-800">{error}</p>
-            </div>
-          )}
-        </div>
-        
-        {results.length > 0 && (
-          <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            <div className="p-6 bg-gray-50 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-800 mb-2">Результаты проверки</h2>
-              <div className="flex gap-6 text-sm">
-                <span className="text-green-600 font-medium">
-                  ✅ Всё ок: {successCount}
-                </span>
-                <span className="text-yellow-600 font-medium">
-                  ⚠️ Предупреждения: {warningCount}
-                </span>
-                <span className="text-red-600 font-medium">
-                  ❌ Ошибки: {errorCount}
-                </span>
+          {/* Right - Info (No Background) */}
+          <div className="pt-4">
+            {/* Name */}
+            <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-8 tracking-tight">
+              Игорь Бурдуков
+            </h1>
+
+            {/* Quote Block */}
+            <div className="mb-8">
+              <div className="relative">
+                <div className="absolute -left-4 -top-2 text-6xl text-gray-300 leading-none">
+                  "
+                </div>
+                <p className="text-gray-700 leading-relaxed mb-4 pl-6">
+                  В SEO с 2016 года. В данный момент SEO специалист Rush Agency. В рамках Rush Academy провожу ежемесячные вебинары, посвященные SEO, а также онлайн-разборы сайтов.
+                </p>
+                <p className="text-gray-700 leading-relaxed pl-6">
+                  Собираю для себя полезные штуки на нейросетях, которые ускоряют рабочий процесс. Поэтому и собрал этот сайт, чтобы все хранилось в одном месте.
+                </p>
               </div>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-100 border-b border-gray-200">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">№</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Проверка</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">URL</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Ожидается</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Код</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Статус</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Результат</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {results.map((result, index) => (
-                    <tr key={index} className="border-b border-gray-200 hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                        {result.number}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-900">
-                        {result.checkName}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-700 break-all max-w-xs">
-                        <div className="truncate" title={result.url}>
-                          {result.url}
-                        </div>
-                        {result.redirectChain.length > 1 && (
-                          <details className="text-xs text-gray-500 mt-1">
-                            <summary className="cursor-pointer">Цепочка ({result.redirectChain.length})</summary>
-                            <div className="mt-1 pl-2 border-l-2 border-gray-300">
-                              {result.redirectChain.map((link, i) => (
-                                <div key={i} className="truncate">{i + 1}. {link}</div>
-                              ))}
-                            </div>
-                          </details>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-700">
-                        {result.expected}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-700">
-                        {result.statusCode || '—'}
-                      </td>
-                      <td className="px-4 py-3 text-2xl">
-                        {result.status}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-700">
-                        {result.message}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            {/* Stats */}
+            <div className="grid grid-cols-3 gap-8 mb-8">
+              <div>
+                <div className="text-5xl font-bold text-gray-900 mb-2">
+                  50<span className="text-3xl">+</span>
+                </div>
+                <div className="text-sm text-gray-600 leading-snug">
+                  сайтов продвигал<br />лично
+                </div>
+              </div>
+
+              <div>
+                <div className="text-5xl font-bold text-gray-900 mb-2">
+                  100<span className="text-3xl">+</span>
+                </div>
+                <div className="text-sm text-gray-600 leading-snug">
+                  сайтов разбирал,<br />консультировал
+                </div>
+              </div>
+
+              <div>
+                <div className="text-5xl font-bold text-gray-900 mb-2">
+                  1000<span className="text-3xl">+</span>
+                </div>
+                <div className="text-sm text-gray-600 leading-snug">
+                  ТЗшек было<br />поставлено
+                </div>
+              </div>
+            </div>
+
+            {/* Social Buttons */}
+            <div className="flex items-center gap-3 mb-4">
+              <a
+                href="https://t.me/yourhandle"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-12 h-12 bg-[#0088cc] rounded-full flex items-center justify-center text-white hover:bg-[#0077b5] transition-colors shadow-md"
+              >
+                <Send className="w-5 h-5" />
+              </a>
+              <a
+                href="https://youtube.com/@yourchannel"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-12 h-12 bg-[#FF0000] rounded-full flex items-center justify-center text-white hover:bg-[#cc0000] transition-colors shadow-md"
+              >
+                <Youtube className="w-5 h-5" />
+              </a>
+              <a
+                href="https://vk.com/yourpage"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-12 h-12 bg-[#0077FF] rounded-full flex items-center justify-center text-white hover:bg-[#0066dd] transition-colors shadow-md"
+              >
+                <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                  <path d="M13.162 18.994c.609 0 .858-.406.851-.915-.031-1.917.714-2.949 2.059-1.604 1.488 1.488 1.796 2.519 3.603 2.519h3.2c.808 0 1.126-.26 1.126-.668 0-.863-1.421-2.386-2.625-3.504-1.686-1.565-1.765-1.602-.313-3.486 1.801-2.339 4.157-5.336 2.073-5.336h-3.981c-.772 0-.828.435-1.103 1.083-.995 2.347-2.886 5.387-3.604 4.922-.751-.485-.407-2.406-.35-5.261.015-.754.011-1.271-.57-1.611-.465-.273-1.389-.266-1.746-.266-1.185 0-2.354.045-2.354 1.028 0 .322.253.753.838.753 1.062 0 .97 3.405.97 3.405s.637 6.036-.134 6.725c-.827.739-1.98-.546-3.467-2.881-1.064-1.676-2.052-4.182-2.052-4.182s-.165-.364-.667-.364H2.427s-.818.046-.818.818c0 .727 2.648 6.845 5.648 10.293 2.754 3.164 5.906 2.956 5.906 2.956z" />
+                </svg>
+              </a>
+              <a
+                href="https://wa.me/yourphone"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-12 h-12 bg-[#25D366] rounded-full flex items-center justify-center text-white hover:bg-[#1eb855] transition-colors shadow-md"
+              >
+                <MessageCircle className="w-5 h-5" />
+              </a>
+            </div>
+
+            <div>
+              <div className="text-base font-semibold text-gray-900 mb-1">
+                Я всегда открыт для общения
+              </div>
+              <div className="text-sm text-gray-500">
+                И пожалуйста, как развивать бизнес в соцсетях
+              </div>
             </div>
           </div>
-        )}
+        </div>
+
+        {/* SEO Tools Section */}
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">
+            SEO Инструменты
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <Link
+              href="/redirect-checker"
+              className="bg-white hover:bg-blue-50 rounded-xl shadow-sm border border-gray-200 p-5 transition-all hover:shadow-md group"
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-2xl">🔄</span>
+                <span className="font-semibold text-gray-900 group-hover:text-blue-600">
+                  Redirect Checker
+                </span>
+              </div>
+              <p className="text-sm text-gray-600">
+                Проверка редиректов и цепочек перенаправлений
+              </p>
+            </Link>
+
+            <Link
+              href="/clean-param"
+              className="bg-white hover:bg-purple-50 rounded-xl shadow-sm border border-gray-200 p-5 transition-all hover:shadow-md group"
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-2xl">🧹</span>
+                <span className="font-semibold text-gray-900 group-hover:text-purple-600">
+                  Clean-param
+                </span>
+              </div>
+              <p className="text-sm text-gray-600">
+                Очистка параметров URL
+              </p>
+            </Link>
+
+            <Link
+              href="/robots-tester"
+              className="bg-white hover:bg-green-50 rounded-xl shadow-sm border border-gray-200 p-5 transition-all hover:shadow-md group"
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-2xl">🤖</span>
+                <span className="font-semibold text-gray-900 group-hover:text-green-600">
+                  Robots Tester
+                </span>
+              </div>
+              <p className="text-sm text-gray-600">
+                Тестирование robots.txt
+              </p>
+            </Link>
+
+            <Link
+              href="/traffic-calculator"
+              className="bg-white hover:bg-orange-50 rounded-xl shadow-sm border border-gray-200 p-5 transition-all hover:shadow-md group"
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-2xl">📊</span>
+                <span className="font-semibold text-gray-900 group-hover:text-orange-600">
+                  Traffic Calculator
+                </span>
+              </div>
+              <p className="text-sm text-gray-600">
+                Расчет потенциального трафика
+              </p>
+            </Link>
+
+            <Link
+              href="/sitemap-validator"
+              className="bg-white hover:bg-pink-50 rounded-xl shadow-sm border border-gray-200 p-5 transition-all hover:shadow-md group"
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-2xl">🗺️</span>
+                <span className="font-semibold text-gray-900 group-hover:text-pink-600">
+                  Sitemap Validator
+                </span>
+              </div>
+              <p className="text-sm text-gray-600">
+                Валидация XML sitemap
+              </p>
+            </Link>
+
+            <Link
+              href="/keywords-collector"
+              className="bg-white hover:bg-indigo-50 rounded-xl shadow-sm border border-gray-200 p-5 transition-all hover:shadow-md group"
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-2xl">🔑</span>
+                <span className="font-semibold text-gray-900 group-hover:text-indigo-600">
+                  Keywords Collector
+                </span>
+              </div>
+              <p className="text-sm text-gray-600">
+                Сбор ключевых слов
+              </p>
+            </Link>
+
+            {/* NEW TOOLS */}
+            <Link
+              href="/transliterator"
+              className="bg-white hover:bg-teal-50 rounded-xl shadow-sm border border-gray-200 p-5 transition-all hover:shadow-md group"
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-2xl">🔤</span>
+                <span className="font-semibold text-gray-900 group-hover:text-teal-600">
+                  Транслитератор
+                </span>
+              </div>
+              <p className="text-sm text-gray-600">
+                Генератор SEO-friendly URL из русского текста
+              </p>
+            </Link>
+
+            <Link
+              href="/url-cleaner"
+              className="bg-white hover:bg-amber-50 rounded-xl shadow-sm border border-gray-200 p-5 transition-all hover:shadow-md group"
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-2xl">🧼</span>
+                <span className="font-semibold text-gray-900 group-hover:text-amber-600">
+                  URL Cleaner
+                </span>
+              </div>
+              <p className="text-sm text-gray-600">
+                Массовая обработка и очистка списков URL
+              </p>
+            </Link>
+          </div>
+        </div>
       </div>
     </div>
   );
