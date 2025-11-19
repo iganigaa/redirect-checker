@@ -15,7 +15,8 @@ import {
   Languages,
   Sparkles,
   Menu,
-  X,
+   X,
+  Network,
 } from 'lucide-react';
 
 const tools = [
