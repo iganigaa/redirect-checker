@@ -25,7 +25,8 @@ const tools = [
   { name: 'Robots Tester', href: '/robots-tester', icon: FileText },
   { name: 'Traffic Calculator', href: '/traffic-calculator', icon: TrendingUp },
   { name: 'Транслитератор', href: '/transliterator', icon: Languages },
-  { name: 'URL Cleaner', href: '/url-cleaner', icon: Sparkles },
+   { name: 'URL Cleaner', href: '/url-cleaner', icon: Sparkles },
+  { name: 'Knowledge Graph', href: '/knowledge-graph', icon: Network },
 ];
 
 export default function Sidebar() {
