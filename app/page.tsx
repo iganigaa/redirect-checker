@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { Send, Youtube, MessageCircle } from 'lucide-react';
+import { Send } from 'lucide-react';
 
 export default function DashboardHome() {
   return (
@@ -76,51 +76,17 @@ export default function DashboardHome() {
               </div>
             </div>
 
-            {/* Social Buttons */}
-            <div className="flex items-center justify-center md:justify-start gap-2 sm:gap-3 mb-4">
+            {/* Telegram Button */}
+            <div className="flex items-center justify-center md:justify-start">
               <a
-                href="https://t.me/yourhandle"
+                href="https://t.me/iganiga1"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-10 h-10 sm:w-12 sm:h-12 bg-[#0088cc] rounded-full flex items-center justify-center text-white hover:bg-[#0077b5] transition-colors shadow-md"
+                className="inline-flex items-center gap-3 px-6 py-3 bg-[#0088cc] rounded-full text-white hover:bg-[#0077b5] transition-colors shadow-md text-sm sm:text-base font-medium"
               >
-                <Send className="w-4 h-4 sm:w-5 sm:h-5" />
+                <Send className="w-5 h-5" />
+                <span>Telegram: @iganiga1</span>
               </a>
-              <a
-                href="https://youtube.com/@yourchannel"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-10 h-10 sm:w-12 sm:h-12 bg-[#FF0000] rounded-full flex items-center justify-center text-white hover:bg-[#cc0000] transition-colors shadow-md"
-              >
-                <Youtube className="w-4 h-4 sm:w-5 sm:h-5" />
-              </a>
-              <a
-                href="https://vk.com/yourpage"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-10 h-10 sm:w-12 sm:h-12 bg-[#0077FF] rounded-full flex items-center justify-center text-white hover:bg-[#0066dd] transition-colors shadow-md"
-              >
-                <svg className="w-4 h-4 sm:w-5 sm:h-5 fill-current" viewBox="0 0 24 24">
-                  <path d="M13.162 18.994c.609 0 .858-.406.851-.915-.031-1.917.714-2.949 2.059-1.604 1.488 1.488 1.796 2.519 3.603 2.519h3.2c.808 0 1.126-.26 1.126-.668 0-.863-1.421-2.386-2.625-3.504-1.686-1.565-1.765-1.602-.313-3.486 1.801-2.339 4.157-5.336 2.073-5.336h-3.981c-.772 0-.828.435-1.103 1.083-.995 2.347-2.886 5.387-3.604 4.922-.751-.485-.407-2.406-.35-5.261.015-.754.011-1.271-.57-1.611-.465-.273-1.389-.266-1.746-.266-1.185 0-2.354.045-2.354 1.028 0 .322.253.753.838.753 1.062 0 .97 3.405.97 3.405s.637 6.036-.134 6.725c-.827.739-1.98-.546-3.467-2.881-1.064-1.676-2.052-4.182-2.052-4.182s-.165-.364-.667-.364H2.427s-.818.046-.818.818c0 .727 2.648 6.845 5.648 10.293 2.754 3.164 5.906 2.956 5.906 2.956z" />
-                </svg>
-              </a>
-              <a
-                href="https://wa.me/yourphone"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-10 h-10 sm:w-12 sm:h-12 bg-[#25D366] rounded-full flex items-center justify-center text-white hover:bg-[#1eb855] transition-colors shadow-md"
-              >
-                <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
-              </a>
-            </div>
-
-            <div className="text-center md:text-left">
-              <div className="text-sm sm:text-base font-semibold text-gray-900 mb-1">
-                Я всегда открыт для общения
-              </div>
-              <div className="text-xs sm:text-sm text-gray-500">
-                И пожалуйста, как развивать бизнес в соцсетях
-              </div>
             </div>
           </div>
         </div>
