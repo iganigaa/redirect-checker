@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Key, AlertCircle, ExternalLink } from 'lucide-react';
+import { Search, Key, AlertCircle, ExternalLink, Download, Copy, Check } from 'lucide-react';
 
 interface KGEntity {
   '@type': string[];
@@ -18,6 +18,7 @@ interface KGEntity {
   result: {
     '@id': string;
   };
+  resultScore?: number;
 }
 
 const ENTITY_TYPES = [
@@ -46,11 +47,12 @@ export default function KnowledgeGraphPage() {
   const [apiKey, setApiKey] = useState('');
   const [query, setQuery] = useState('');
   const [entityType, setEntityType] = useState('');
-  const [language, setLanguage] = useState('ru');
+  const [language, setLanguage] = useState('en');
   const [results, setResults] = useState<KGEntity[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const savedApiKey = localStorage.getItem('kg_api_key');
@@ -100,7 +102,10 @@ export default function KnowledgeGraphPage() {
       const data = await response.json();
       
       if (data.itemListElement && data.itemListElement.length > 0) {
-        setResults(data.itemListElement.map((item: any) => item.result));
+        setResults(data.itemListElement.map((item: any) => ({
+          ...item.result,
+          resultScore: item.resultScore
+        })));
       } else {
         setError('Ничего не найдено');
       }
@@ -111,8 +116,52 @@ export default function KnowledgeGraphPage() {
     }
   };
 
+  const handleCopyTable = () => {
+    const headers = ['Название', 'Тип', 'Описание', 'KGID', 'Релевантность', 'URL', 'Изображение', 'Подробнее'];
+    const rows = results.map(entity => [
+      entity.name,
+      entity['@type']?.join(', ') || '-',
+      entity.description || '-',
+      entity.result['@id'] || '-',
+      entity.resultScore?.toFixed(0) || '-',
+      entity.url || '-',
+      entity.image?.contentUrl || '-',
+      entity.detailedDescription?.url || '-'
+    ]);
+
+    const text = [headers.join('\t'), ...rows.map(row => row.join('\t'))].join('\n');
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleDownloadCSV = () => {
+    const headers = ['Название', 'Тип', 'Описание', 'KGID', 'Релевантность', 'URL', 'Изображение', 'Подробнее'];
+    const rows = results.map(entity => [
+      entity.name,
+      entity['@type']?.join(', ') || '-',
+      entity.description || '-',
+      entity.result['@id'] || '-',
+      entity.resultScore?.toFixed(0) || '-',
+      entity.url || '-',
+      entity.image?.contentUrl || '-',
+      entity.detailedDescription?.url || '-'
+    ]);
+
+    const csv = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `knowledge-graph-${query}-${Date.now()}.csv`;
+    link.click();
+  };
+
   return (
-    <div className="max-w-7xl mx-auto">
+    <div className="max-w-full mx-auto">
       <div className="mb-6">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
           Поиск по графу знаний Google
@@ -148,7 +197,7 @@ export default function KnowledgeGraphPage() {
               placeholder="Введите ваш Google Knowledge Graph API ключ"
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
             />
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <button
                 onClick={handleSaveApiKey}
                 className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm font-medium"
@@ -181,55 +230,57 @@ export default function KnowledgeGraphPage() {
 
       {/* Search Form */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6 mb-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+        <h3 className="text-base font-semibold text-gray-900 mb-4">Настройки</h3>
+        
+        <div className="grid grid-cols-1 gap-4 mb-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Поисковый запрос
+              Запрос
             </label>
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-              placeholder="Например: Илон Маск"
+              placeholder="Например: Apple"
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Тип сущности
-            </label>
-            <select
-              value={entityType}
-              onChange={(e) => setEntityType(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
-            >
-              {ENTITY_TYPES.map((type) => (
-                <option key={type.value} value={type.value}>
-                  {type.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Тип сущности
+              </label>
+              <select
+                value={entityType}
+                onChange={(e) => setEntityType(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+              >
+                {ENTITY_TYPES.map((type) => (
+                  <option key={type.value} value={type.value}>
+                    {type.label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Язык результатов
-            </label>
-            <select
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
-            >
-              {LANGUAGES.map((lang) => (
-                <option key={lang.value} value={lang.value}>
-                  {lang.label}
-                </option>
-              ))}
-            </select>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Язык результатов
+              </label>
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+              >
+                {LANGUAGES.map((lang) => (
+                  <option key={lang.value} value={lang.value}>
+                    {lang.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 
@@ -239,7 +290,7 @@ export default function KnowledgeGraphPage() {
           className="w-full sm:w-auto px-6 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium inline-flex items-center justify-center gap-2"
         >
           <Search className="w-5 h-5" />
-          {loading ? 'Поиск...' : 'Найти'}
+          {loading ? 'Поиск...' : 'Получить результаты'}
         </button>
       </div>
 
@@ -251,82 +302,114 @@ export default function KnowledgeGraphPage() {
         </div>
       )}
 
-      {/* Results */}
+      {/* Results Table */}
       {results.length > 0 && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            Найдено результатов: {results.length}
-          </h2>
-
-          <div className="space-y-4">
-            {results.map((entity, index) => (
-              <div
-                key={index}
-                className="border border-gray-200 rounded-lg p-4 hover:border-purple-300 transition-colors"
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Результаты
+            </h2>
+            <div className="flex gap-2">
+              <button
+                onClick={handleCopyTable}
+                className="px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium inline-flex items-center gap-2"
               >
-                <div className="flex gap-4">
-                  {entity.image?.contentUrl && (
-                    <img
-                      src={entity.image.contentUrl}
-                      alt={entity.name}
-                      className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg flex-shrink-0"
-                    />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                      {entity.name}
-                    </h3>
-                    {entity['@type'] && (
-                      <div className="flex flex-wrap gap-1 mb-2">
-                        {entity['@type'].map((type, i) => (
-                          <span
-                            key={i}
-                            className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs"
-                          >
-                            {type}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                    {entity.description && (
-                      <p className="text-sm text-gray-600 mb-2">
-                        {entity.description}
-                      </p>
-                    )}
-                    {entity.detailedDescription && (
-                      <div className="text-sm text-gray-700 mb-2">
-                        {entity.detailedDescription.articleBody.substring(0, 200)}
-                        {entity.detailedDescription.articleBody.length > 200 && '...'}
-                      </div>
-                    )}
-                    <div className="flex flex-wrap gap-2">
-                      {entity.url && (
+                {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+                {copied ? 'Скопировано' : 'Копировать'}
+              </button>
+              <button
+                onClick={handleDownloadCSV}
+                className="px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium inline-flex items-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                Скачать CSV
+              </button>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left py-3 px-4 font-semibold text-gray-900 bg-gray-50">Название</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-900 bg-gray-50">Тип</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-900 bg-gray-50">Описание</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-900 bg-gray-50">KGID</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-900 bg-gray-50">Релевантность</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-900 bg-gray-50">URL</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-900 bg-gray-50">Изображение</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-900 bg-gray-50">Подробнее</th>
+                </tr>
+              </thead>
+              <tbody>
+                {results.map((entity, index) => (
+                  <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="py-3 px-4 font-medium text-gray-900">{entity.name}</td>
+                    <td className="py-3 px-4 text-gray-600">
+                      {entity['@type']?.map(t => t.replace(/Thing$/, 'Общий')).join(', ') || '-'}
+                    </td>
+                    <td className="py-3 px-4 text-gray-600 max-w-xs truncate">
+                      {entity.description || '-'}
+                    </td>
+                    <td className="py-3 px-4 text-gray-600 font-mono text-xs">
+                      {entity.result['@id'] || '-'}
+                    </td>
+                    <td className="py-3 px-4 text-gray-900 font-semibold">
+                      {entity.resultScore?.toFixed(0) || '-'}
+                    </td>
+                    <td className="py-3 px-4">
+                      {entity.url ? (
                         <a
                           href={entity.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-sm text-purple-600 hover:text-purple-700 inline-flex items-center gap-1"
+                          className="text-purple-600 hover:text-purple-700 inline-flex items-center gap-1"
                         >
-                          Официальный сайт
+                          Сайт
                           <ExternalLink className="w-3 h-3" />
                         </a>
+                      ) : (
+                        <span className="text-gray-400">-</span>
                       )}
-                      {entity.detailedDescription?.url && (
+                    </td>
+                    <td className="py-3 px-4">
+                      {entity.image?.contentUrl ? (
+                        <a
+                          href={entity.image.contentUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-purple-600 hover:text-purple-700 inline-flex items-center gap-1"
+                        >
+                          Фото
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
+                    </td>
+                    <td className="py-3 px-4">
+                      {entity.detailedDescription?.url ? (
                         <a
                           href={entity.detailedDescription.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-sm text-purple-600 hover:text-purple-700 inline-flex items-center gap-1"
+                          className="text-purple-600 hover:text-purple-700 inline-flex items-center gap-1"
                         >
-                          Подробнее
+                          Wiki
                           <ExternalLink className="w-3 h-3" />
                         </a>
+                      ) : (
+                        <span className="text-gray-400">-</span>
                       )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="mt-4 text-sm text-gray-500">
+            Найдено результатов: <span className="font-semibold text-gray-900">{results.length}</span>
           </div>
         </div>
       )}
