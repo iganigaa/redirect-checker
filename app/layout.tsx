@@ -36,13 +36,11 @@ export default function RootLayout({
               m[i].l=1*new Date();
               for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
               k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
-            })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105412966', 'ym');
+            })(window, document,'script','https://mc.yandex.ru/metrika/tag.js', 'ym');
 
-            ym(105412966, 'init', {
-              ssr:true,
+            ym(102576828, 'init', {
               webvisor:true,
               clickmap:true,
-              ecommerce:"dataLayer",
               accurateTrackBounce:true,
               trackLinks:true
             });
@@ -51,7 +49,7 @@ export default function RootLayout({
         <noscript>
           <div>
             <img 
-              src="https://mc.yandex.ru/watch/105412966" 
+              src="https://mc.yandex.ru/watch/102576828" 
               style={{ position: 'absolute', left: '-9999px' }} 
               alt="" 
             />
