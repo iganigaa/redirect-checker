@@ -337,8 +337,9 @@ function generateFact(check: any): string {
     return `${step.statusCode}`;
   });
   
-  const finalUrl = check.finalUrl || check.redirectSteps[check.redirectSteps.length - 1]?.url || '—';
-  return `${steps.join(' → ')} → ${finalUrl}`;
+  // URL уже включен в последний элемент steps, не добавляем повторно
+  return steps.join(' → ');
+
 }
 
 // Генерация рекомендаций для специалиста
