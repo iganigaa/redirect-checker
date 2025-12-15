@@ -17,6 +17,7 @@ import {
   Menu,
    X,
   Network,
+  ShoppingCart,
 } from 'lucide-react';
 
 const tools = [
@@ -27,6 +28,7 @@ const tools = [
   { name: 'Транслитератор', href: '/transliterator', icon: Languages },
    { name: 'URL Cleaner', href: '/url-cleaner', icon: Sparkles },
   { name: 'Knowledge Graph', href: '/knowledge-graph', icon: Network },
+  { name: 'E-commerce', href: '/e-commerce-generator', icon: ShoppingCart },
 ];
 
 export default function Sidebar() {
