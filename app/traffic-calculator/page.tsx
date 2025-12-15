@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Upload, Download, TrendingUp, Info } from 'lucide-react';
 import Navigation from '@/components/Navigation';
+import Breadcrumbs from '@/components/Breadcrumbs';
 
 interface GroupedPosition {
   position: number;
@@ -115,6 +116,7 @@ seo курсы бесплатно,9,762,1.18%,5`;
       <Navigation />
       <div className="min-h-screen bg-gray-50">
         <div className="container mx-auto px-4 py-8 max-w-6xl">
+          <Breadcrumbs items={[{ label: 'Traffic Calculator' }]} />
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
             <h1 className="text-3xl font-bold mb-2">Калькулятор SEO трафика</h1>
             <p className="text-gray-600 mb-6">

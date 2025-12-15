@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import axios from 'axios';
+import Breadcrumbs from '@/components/Breadcrumbs';
 
 interface Rule {
   type: string;
@@ -109,6 +110,7 @@ export default function RobotsTesterPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
+        <Breadcrumbs items={[{ label: 'Robots Tester' }]} />
         <div className="mb-8">
           <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
             Тестер robots.txt

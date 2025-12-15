@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Search, Key, AlertCircle, ExternalLink, Download, Copy, Check } from 'lucide-react';
+import Breadcrumbs from '@/components/Breadcrumbs';
 
 interface KGEntity {
   '@type': string[];
@@ -162,6 +163,7 @@ export default function KnowledgeGraphPage() {
 
   return (
     <div className="max-w-full mx-auto">
+      <Breadcrumbs items={[{ label: 'Knowledge Graph' }]} />
       <div className="mb-6">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
           Поиск по графу знаний Google

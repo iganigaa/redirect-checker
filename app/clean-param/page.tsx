@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import axios from 'axios';
+import Breadcrumbs from '@/components/Breadcrumbs';
 
 interface ParamGroup {
   type: 'analytics' | 'navigation' | 'content';
@@ -54,6 +55,7 @@ export default function CleanParamPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
+        <Breadcrumbs items={[{ label: 'Clean-param' }]} />
         <div className="mb-8">
           <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
             Генератор Clean-param для robots.txt

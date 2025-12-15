@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Breadcrumbs from '@/components/Breadcrumbs';
 
 export default function UrlCleanerPage() {
   const [urlInput, setUrlInput] = useState('');
@@ -140,6 +141,7 @@ export default function UrlCleanerPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
       <div className="max-w-6xl mx-auto">
+        <Breadcrumbs items={[{ label: 'URL Cleaner' }]} />
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">

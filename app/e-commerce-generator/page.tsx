@@ -10,6 +10,7 @@ import { ErrorLogModal } from '@/components/e-commerce/ErrorLogModal';
 import { ProductItem, ProcessingStats, AppError } from '@/lib/e-commerce/types';
 import { BATCH_SIZE, BATCH_DELAY, DEFAULT_PROMPT_TEMPLATE, DEFAULT_MODEL, AVAILABLE_MODELS, constructPrompt } from '@/lib/e-commerce/constants';
 import { Play, Download, Trash2, FileUp, Sparkles, Settings, X, Edit3, Save, FileText, AlertTriangle } from 'lucide-react';
+import Breadcrumbs from '@/components/Breadcrumbs';
 
 export default function ECommerceGeneratorPage() {
   const [items, setItems] = useState<ProductItem[]>([]);
@@ -389,6 +390,11 @@ export default function ECommerceGeneratorPage() {
       {showSettings && <SettingsModal />}
       {showPromptEditor && <PromptEditorModal />}
       {showErrorLogs && <ErrorLogModal errors={errorLogs} onClose={() => setShowErrorLogs(false)} onClear={() => setErrorLogs([])} />}
+
+      {/* Breadcrumbs */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+        <Breadcrumbs items={[{ label: 'E-commerce' }]} />
+      </div>
 
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-20">
