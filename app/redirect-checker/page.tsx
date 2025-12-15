@@ -21,7 +21,7 @@ import {
   ArrowLeftRight,
   MousePointer2,
   Info,
-  Home,
+  Home as HomeIcon,
   ChevronRight
 } from 'lucide-react';
 
@@ -325,7 +325,7 @@ export default function Home() {
               href="/" 
               className="flex items-center gap-1 hover:text-gray-700 transition-colors no-underline"
             >
-              <Home className="w-4 h-4" />
+              <HomeIcon className="w-4 h-4" />
               <span>Главная</span>
             </Link>
             <ChevronRight className="w-4 h-4" />
