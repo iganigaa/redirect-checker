@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Breadcrumbs from '@/components/Breadcrumbs';
+import Link from 'next/link';
+import { Home as HomeIcon, ChevronRight, Copy } from 'lucide-react';
 
 export default function UrlCleanerPage() {
   const [urlInput, setUrlInput] = useState('');
@@ -139,114 +140,121 @@ export default function UrlCleanerPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
-      <div className="max-w-6xl mx-auto">
-        <Breadcrumbs items={[{ label: 'URL Cleaner' }]} />
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
-            URL List Cleaner
-          </h1>
-          <p className="text-gray-600">
-            Онлайн-инструмент для работы со списком URL
-          </p>
-        </div>
+    <div className="max-w-7xl mx-auto overflow-x-hidden">
+      {/* Breadcrumbs */}
+      <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
+        <Link href="/" className="hover:text-purple-600 transition-colors">
+          <HomeIcon className="w-4 h-4" />
+        </Link>
+        <ChevronRight className="w-4 h-4" />
+        <span className="text-gray-900 font-medium">URL Cleaner</span>
+      </div>
 
-        {/* Instructions */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-          <h2 className="text-xl font-bold mb-4 text-gray-800">Инструкция</h2>
-          <ol className="list-decimal list-inside space-y-2 text-gray-700">
-            <li>Скопируйте список URL-адресов, которые вы хотите преобразовать в доменное имя или стандартизировать.</li>
-            <li>Вставьте список в поле ввода.</li>
-            <li>Нажмите соответствующую кнопку, чтобы выполнить очистку или преобразование.</li>
-            <li>Ваш результат появится в поле ввода.</li>
-            <li>Скопируйте полученный список.</li>
-          </ol>
-        </div>
+      {/* Title */}
+      <h1 className="text-3xl font-semibold text-gray-900 mb-6">
+        URL List Cleaner
+      </h1>
 
-        {/* Input Field */}
-        <div className="relative mb-6">
+      {/* Instructions */}
+      <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6 mb-6">
+        <h2 className="text-base font-bold text-gray-800 mb-4">Инструкция</h2>
+        <ol className="list-decimal list-inside space-y-2 text-sm text-gray-700">
+          <li>Скопируйте список URL-адресов, которые вы хотите преобразовать в доменное имя или стандартизировать.</li>
+          <li>Вставьте список в поле ввода.</li>
+          <li>Нажмите соответствующую кнопку, чтобы выполнить очистку или преобразование.</li>
+          <li>Ваш результат появится в поле ввода.</li>
+          <li>Скопируйте полученный список.</li>
+        </ol>
+      </div>
+
+      {/* Input Field */}
+      <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6 mb-6">
+        <div className="relative">
           <div className="absolute top-3 right-3 z-10">
-            <span className="text-xs text-gray-500 bg-white px-3 py-1 rounded-full border border-gray-200 shadow-sm">
+            <span className="text-xs text-gray-500 bg-white px-3 py-1 rounded-full border border-gray-200">
               {lineCount} строк
             </span>
           </div>
           <textarea
             value={urlInput}
             onChange={(e) => setUrlInput(e.target.value)}
-            className="w-full h-64 p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none shadow-sm resize-y font-mono text-sm"
+            className="w-full h-64 p-4 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none resize-y font-mono text-sm"
             placeholder="Вставьте список URL (по одному в строке)"
           />
 
           {/* Toast */}
           {showToast && (
-            <div className="absolute bottom-4 right-4 bg-gray-800 text-white text-sm px-4 py-2 rounded-lg shadow-lg animate-fade-in">
+            <div className="absolute bottom-4 right-4 bg-gray-800 text-white text-xs px-4 py-2 rounded-lg shadow-lg animate-fade-in">
               {toastMessage}
             </div>
           )}
         </div>
+      </div>
 
-        {/* Buttons Grid */}
+      {/* Buttons Grid */}
+      <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
+        <h2 className="text-base font-bold text-gray-800 mb-4">Действия</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           <button
             onClick={() => processUrls('trimSlash')}
-            className="bg-gray-800 hover:bg-gray-700 text-white py-3 px-4 rounded-lg text-sm transition-all shadow-sm"
+            className="bg-purple-600 hover:bg-purple-700 text-white py-3 px-4 rounded-lg text-sm transition-all font-medium"
           >
             Обрезать конечный слэш /
           </button>
 
           <button
             onClick={() => processUrls('trimToSubfolder')}
-            className="bg-gray-800 hover:bg-gray-700 text-white py-3 px-4 rounded-lg text-sm transition-all shadow-sm"
+            className="bg-purple-600 hover:bg-purple-700 text-white py-3 px-4 rounded-lg text-sm transition-all font-medium"
           >
             Обрезать URL до подпапки
           </button>
 
           <button
             onClick={() => processUrls('removeProtocol')}
-            className="bg-gray-800 hover:bg-gray-700 text-white py-3 px-4 rounded-lg text-sm transition-all shadow-sm"
+            className="bg-purple-600 hover:bg-purple-700 text-white py-3 px-4 rounded-lg text-sm transition-all font-medium"
           >
             Удалить http/https
           </button>
 
           <button
             onClick={() => processUrls('removeUrlDuplicates')}
-            className="bg-gray-800 hover:bg-gray-700 text-white py-3 px-4 rounded-lg text-sm transition-all shadow-sm"
+            className="bg-purple-600 hover:bg-purple-700 text-white py-3 px-4 rounded-lg text-sm transition-all font-medium"
           >
             Удалить дубликаты URL
           </button>
 
           <button
             onClick={() => processUrls('removeDomainDuplicates')}
-            className="bg-gray-800 hover:bg-gray-700 text-white py-3 px-4 rounded-lg text-sm transition-all shadow-sm"
+            className="bg-purple-600 hover:bg-purple-700 text-white py-3 px-4 rounded-lg text-sm transition-all font-medium"
           >
             Удалить дубликаты домена
           </button>
 
           <button
             onClick={() => processUrls('sortAZ')}
-            className="bg-gray-800 hover:bg-gray-700 text-white py-3 px-4 rounded-lg text-sm transition-all shadow-sm"
+            className="bg-purple-600 hover:bg-purple-700 text-white py-3 px-4 rounded-lg text-sm transition-all font-medium"
           >
             Сортировка A—Z
           </button>
 
           <button
             onClick={() => processUrls('extractDomains')}
-            className="bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-semibold py-3 px-4 rounded-lg text-sm transition-all shadow-sm"
+            className="bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-semibold py-3 px-4 rounded-lg text-sm transition-all"
           >
             Только домен
           </button>
 
           <button
             onClick={copyToClipboard}
-            className="bg-cyan-500 hover:bg-cyan-600 text-white py-3 px-4 rounded-lg text-sm transition-all shadow-sm"
+            className="bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg text-sm transition-all font-medium inline-flex items-center justify-center gap-2"
           >
+            <Copy className="w-4 h-4" />
             Скопировать
           </button>
 
           <button
             onClick={clearInput}
-            className="bg-red-500 hover:bg-red-600 text-white py-3 px-4 rounded-lg text-sm transition-all shadow-sm"
+            className="bg-red-500 hover:bg-red-600 text-white py-3 px-4 rounded-lg text-sm transition-all font-medium"
           >
             Очистить
           </button>

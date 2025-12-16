@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowRight, Copy, Trash2 } from 'lucide-react';
-import Breadcrumbs from '@/components/Breadcrumbs';
+import { ArrowRight, Copy, Trash2, Home as HomeIcon, ChevronRight } from 'lucide-react';
+import Link from 'next/link';
 
 export default function TransliteratorPage() {
   const [inputText, setInputText] = useState('');
@@ -129,33 +129,36 @@ export default function TransliteratorPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
-      <div className="max-w-7xl mx-auto">
-        <Breadcrumbs items={[{ label: 'Транслитератор' }]} />
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
-            Генератор правильных ссылок
-          </h1>
-          <p className="text-gray-600">
-            Сервис для создания SEO-friendly URL из русских словосочетаний (правила Яндекс)
-          </p>
-        </div>
+    <div className="max-w-7xl mx-auto overflow-x-hidden">
+      {/* Breadcrumbs */}
+      <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
+        <Link href="/" className="hover:text-purple-600 transition-colors">
+          <HomeIcon className="w-4 h-4" />
+        </Link>
+        <ChevronRight className="w-4 h-4" />
+        <span className="text-gray-900 font-medium">Транслитератор</span>
+      </div>
 
-        {/* Main Interface */}
-        <div className="grid lg:grid-cols-[1fr_auto_1fr] gap-6 mb-8">
+      {/* Title */}
+      <h1 className="text-3xl font-semibold text-gray-900 mb-6">
+        Генератор правильных ссылок
+      </h1>
+
+      {/* Main Interface */}
+      <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6 mb-6">
+        <div className="grid lg:grid-cols-[1fr_auto_1fr] gap-6">
           {/* Input Column */}
           <div className="flex flex-col">
-            <label className="font-semibold text-gray-700 mb-2">
+            <label className="font-semibold text-gray-700 mb-2 text-sm">
               Русские словосочетания:
             </label>
             <textarea
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              className="flex-grow min-h-[24rem] p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none shadow-sm resize-none font-mono"
+              className="flex-grow min-h-[24rem] p-4 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none resize-none font-mono text-sm"
               placeholder="Введите текст здесь..."
             />
-            <div className="mt-2 text-sm text-gray-500 bg-gray-200 px-3 py-1 rounded inline-block">
+            <div className="mt-2 text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded inline-block">
               Кол-во символов: {inputText.length}
             </div>
           </div>
@@ -164,7 +167,7 @@ export default function TransliteratorPage() {
           <div className="flex lg:flex-col justify-center items-center gap-3 lg:w-48">
             <button
               onClick={handleConvert}
-              className="w-full bg-gray-800 hover:bg-gray-700 text-white font-medium py-3 px-4 rounded-lg shadow-sm transition-all flex items-center justify-center gap-2"
+              className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-4 rounded-lg transition-all flex items-center justify-center gap-2 text-sm"
             >
               <span>Преобразовать</span>
               <ArrowRight className="w-4 h-4" />
@@ -172,7 +175,7 @@ export default function TransliteratorPage() {
 
             <button
               onClick={handleCopy}
-              className="w-full bg-white hover:bg-gray-50 text-gray-800 border border-gray-300 font-medium py-3 px-4 rounded-lg shadow-sm transition-all flex items-center justify-center gap-2"
+              className="w-full bg-white hover:bg-gray-50 text-gray-800 border border-gray-300 font-medium py-3 px-4 rounded-lg transition-all flex items-center justify-center gap-2 text-sm"
             >
               <Copy className="w-4 h-4" />
               <span>Скопировать</span>
@@ -180,7 +183,7 @@ export default function TransliteratorPage() {
 
             <button
               onClick={handleClear}
-              className="w-full bg-white hover:bg-red-50 text-red-600 border border-gray-300 hover:border-red-200 font-medium py-3 px-4 rounded-lg shadow-sm transition-all flex items-center justify-center gap-2"
+              className="w-full bg-white hover:bg-red-50 text-red-600 border border-gray-300 hover:border-red-200 font-medium py-3 px-4 rounded-lg transition-all flex items-center justify-center gap-2 text-sm"
             >
               <Trash2 className="w-4 h-4" />
               <span>Очистить</span>
@@ -189,58 +192,58 @@ export default function TransliteratorPage() {
 
           {/* Output Column */}
           <div className="flex flex-col relative">
-            <label className="font-semibold text-gray-700 mb-2">
+            <label className="font-semibold text-gray-700 mb-2 text-sm">
               Правильные ссылки:
             </label>
             <textarea
               value={outputText}
               readOnly
-              className="flex-grow min-h-[24rem] p-4 border border-gray-300 rounded-xl bg-gray-50 outline-none shadow-inner resize-none font-mono text-gray-600"
+              className="flex-grow min-h-[24rem] p-4 border border-gray-200 rounded-lg bg-gray-50 outline-none resize-none font-mono text-sm text-gray-600"
               placeholder="Результат появится здесь..."
             />
-            <div className="mt-2 text-sm text-gray-500 bg-gray-200 px-3 py-1 rounded inline-block">
+            <div className="mt-2 text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded inline-block">
               Кол-во символов: {outputText.length}
             </div>
 
             {/* Toast */}
             {showToast && (
-              <div className="absolute bottom-16 right-4 bg-gray-800 text-white text-sm px-4 py-2 rounded shadow-lg animate-fade-in">
+              <div className="absolute bottom-16 right-4 bg-gray-800 text-white text-xs px-4 py-2 rounded shadow-lg animate-fade-in">
                 {toastMessage}
               </div>
             )}
           </div>
         </div>
+      </div>
 
-        {/* Rules Section */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-          <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-            <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            Правила транскрибирования (Yandex)
-          </h3>
-          <p className="text-sm text-gray-600 mb-4">
-            С 04.12.19 сервис придерживается рекомендованных правил. Основные особенности:
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm text-gray-700">
-            <div className="bg-gray-50 p-3 rounded border border-gray-100">
-              <span className="font-bold text-blue-600">Е → ye</span> в начале слова, после гласных и ъ/ь.
-            </div>
-            <div className="bg-gray-50 p-3 rounded border border-gray-100">
-              <span className="font-bold text-blue-600">Ё → yo</span> всегда.
-            </div>
-            <div className="bg-gray-50 p-3 rounded border border-gray-100">
-              <span className="font-bold text-blue-600">Й → y</span> всегда.
-            </div>
-            <div className="bg-gray-50 p-3 rounded border border-gray-100">
-              <span className="font-bold text-blue-600">Ж → zh</span>, <span className="font-bold text-blue-600">Х → kh</span>, <span className="font-bold text-blue-600">Ц → ts</span>
-            </div>
-            <div className="bg-gray-50 p-3 rounded border border-gray-100">
-              <span className="font-bold text-blue-600">Ъ</span> не пишется (кроме случая перед Е).
-            </div>
-            <div className="bg-gray-50 p-3 rounded border border-gray-100">
-              <span className="font-bold text-blue-600">Ы → y</span> (исключение окончания -ый/-ий → iy).
-            </div>
+      {/* Rules Section */}
+      <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
+        <h3 className="text-base font-bold text-gray-800 mb-4 flex items-center gap-2">
+          <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Правила транскрибирования (Yandex)
+        </h3>
+        <p className="text-sm text-gray-600 mb-4">
+          С 04.12.19 сервис придерживается рекомендованных правил. Основные особенности:
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm text-gray-700">
+          <div className="bg-gray-50 p-3 rounded border border-gray-100">
+            <span className="font-bold text-purple-600">Е → ye</span> в начале слова, после гласных и ъ/ь.
+          </div>
+          <div className="bg-gray-50 p-3 rounded border border-gray-100">
+            <span className="font-bold text-purple-600">Ё → yo</span> всегда.
+          </div>
+          <div className="bg-gray-50 p-3 rounded border border-gray-100">
+            <span className="font-bold text-purple-600">Й → y</span> всегда.
+          </div>
+          <div className="bg-gray-50 p-3 rounded border border-gray-100">
+            <span className="font-bold text-purple-600">Ж → zh</span>, <span className="font-bold text-purple-600">Х → kh</span>, <span className="font-bold text-purple-600">Ц → ts</span>
+          </div>
+          <div className="bg-gray-50 p-3 rounded border border-gray-100">
+            <span className="font-bold text-purple-600">Ъ</span> не пишется (кроме случая перед Е).
+          </div>
+          <div className="bg-gray-50 p-3 rounded border border-gray-100">
+            <span className="font-bold text-purple-600">Ы → y</span> (исключение окончания -ый/-ий → iy).
           </div>
         </div>
       </div>

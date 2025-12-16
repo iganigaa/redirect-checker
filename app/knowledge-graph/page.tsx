@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Key, AlertCircle, ExternalLink, Download, Copy, Check } from 'lucide-react';
-import Breadcrumbs from '@/components/Breadcrumbs';
+import { Search, Key, AlertCircle, ExternalLink, Download, Copy, Check, Home as HomeIcon, ChevronRight } from 'lucide-react';
+import Link from 'next/link';
 
 interface KGEntity {
   '@type': string[];
@@ -162,23 +162,27 @@ export default function KnowledgeGraphPage() {
   };
 
   return (
-    <div className="max-w-full mx-auto">
-      <Breadcrumbs items={[{ label: 'Knowledge Graph' }]} />
-      <div className="mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-          Поиск по графу знаний Google
-        </h1>
-        <p className="text-sm sm:text-base text-gray-600">
-          Поиск сущностей в Google Knowledge Graph API
-        </p>
+    <div className="max-w-7xl mx-auto overflow-x-hidden">
+      {/* Breadcrumbs */}
+      <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
+        <Link href="/" className="hover:text-purple-600 transition-colors">
+          <HomeIcon className="w-4 h-4" />
+        </Link>
+        <ChevronRight className="w-4 h-4" />
+        <span className="text-gray-900 font-medium">Knowledge Graph</span>
       </div>
 
+      {/* Title */}
+      <h1 className="text-3xl font-semibold text-gray-900 mb-6">
+        Поиск по графу знаний Google
+      </h1>
+
       {/* API Key Section */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6 mb-6">
+      <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Key className="w-5 h-5 text-purple-600" />
-            <h2 className="text-lg font-semibold text-gray-900">API Ключ</h2>
+            <h2 className="text-base font-semibold text-gray-900">API Ключ</h2>
           </div>
           {apiKey && !showApiKeyInput && (
             <button
@@ -197,7 +201,7 @@ export default function KnowledgeGraphPage() {
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               placeholder="Введите ваш Google Knowledge Graph API ключ"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
             />
             <div className="flex flex-wrap gap-2">
               <button
@@ -231,8 +235,8 @@ export default function KnowledgeGraphPage() {
       </div>
 
       {/* Search Form */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6 mb-6">
-        <h3 className="text-base font-semibold text-gray-900 mb-4">Настройки</h3>
+      <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6 mb-6">
+        <h3 className="text-base font-semibold text-gray-900 mb-4">Настройки поиска</h3>
         
         <div className="grid grid-cols-1 gap-4 mb-4">
           <div>
@@ -245,7 +249,7 @@ export default function KnowledgeGraphPage() {
               onChange={(e) => setQuery(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
               placeholder="Например: Apple"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
             />
           </div>
 
@@ -257,7 +261,7 @@ export default function KnowledgeGraphPage() {
               <select
                 value={entityType}
                 onChange={(e) => setEntityType(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
               >
                 {ENTITY_TYPES.map((type) => (
                   <option key={type.value} value={type.value}>
@@ -274,7 +278,7 @@ export default function KnowledgeGraphPage() {
               <select
                 value={language}
                 onChange={(e) => setLanguage(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
               >
                 {LANGUAGES.map((lang) => (
                   <option key={lang.value} value={lang.value}>
@@ -289,7 +293,7 @@ export default function KnowledgeGraphPage() {
         <button
           onClick={handleSearch}
           disabled={loading || !apiKey}
-          className="w-full sm:w-auto px-6 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium inline-flex items-center justify-center gap-2"
+          className="w-full px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium inline-flex items-center justify-center gap-2"
         >
           <Search className="w-5 h-5" />
           {loading ? 'Поиск...' : 'Получить результаты'}
@@ -306,22 +310,22 @@ export default function KnowledgeGraphPage() {
 
       {/* Results Table */}
       {results.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">
-              Результаты
+            <h2 className="text-base font-semibold text-gray-900">
+              Результаты ({results.length})
             </h2>
             <div className="flex gap-2">
               <button
                 onClick={handleCopyTable}
-                className="px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium inline-flex items-center gap-2"
+                className="px-3 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium inline-flex items-center gap-2"
               >
                 {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
                 {copied ? 'Скопировано' : 'Копировать'}
               </button>
               <button
                 onClick={handleDownloadCSV}
-                className="px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium inline-flex items-center gap-2"
+                className="px-3 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium inline-flex items-center gap-2"
               >
                 <Download className="w-4 h-4" />
                 Скачать CSV
@@ -408,10 +412,6 @@ export default function KnowledgeGraphPage() {
                 ))}
               </tbody>
             </table>
-          </div>
-
-          <div className="mt-4 text-sm text-gray-500">
-            Найдено результатов: <span className="font-semibold text-gray-900">{results.length}</span>
           </div>
         </div>
       )}
