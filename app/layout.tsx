@@ -3,6 +3,7 @@ import { Montserrat } from "next/font/google";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
 import MainContent from "@/components/MainContent";
+import CanonicalTag from "@/components/CanonicalTag";
 import Script from "next/script";
 
 const montserrat = Montserrat({
@@ -55,6 +56,7 @@ export default function RootLayout({
         {/* /Yandex.Metrika counter */}
       </head>
       <body className={montserrat.className}>
+        <CanonicalTag />
         <div className="flex min-h-screen bg-gray-50">
           <Sidebar />
           <MainContent>{children}</MainContent>

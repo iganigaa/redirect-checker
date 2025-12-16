@@ -1,4 +1,5 @@
 {
+  "trailingSlash": false,
   "headers": [
     {
       "source": "/(.*)",
@@ -20,7 +21,8 @@
         }
       ],
       "destination": "https://i-burdukov.ru/:path*",
-      "permanent": true
+      "permanent": true,
+      "statusCode": 301
     }
   ]
 }

@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  trailingSlash: false,
   images: {
     remotePatterns: [
       {
@@ -14,6 +15,12 @@ const nextConfig: NextConfig = {
         hostname: 'www.genspark.ai',
         port: '',
         pathname: '/api/files/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'i-burdukov.ru',
+        port: '',
+        pathname: '/**',
       },
     ],
   },
