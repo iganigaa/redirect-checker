@@ -5,6 +5,9 @@ export const metadata: Metadata = {
   description: 'Автоматическая проверка HTTPS, WWW, trailing slash, цепочек редиректов для Google/Yandex. Экспорт CSV, эмуляция Googlebot. Бесплатно.',
   keywords: 'redirect checker, проверка редиректов, 301 редирект, 302 редирект, цепочка редиректов, canonical, trailing slash, SEO инструмент, googlebot',
   authors: [{ name: 'Игорь Бурдуков' }],
+  alternates: {
+    canonical: '/redirect-checker',
+  },
   openGraph: {
     title: 'REDIRECT CHECKER — проверка редиректов для SEO',
     description: 'Автоматическая проверка 11 критических сценариев редиректов: HTTPS, WWW, trailing slash, регистр URL, canonical-теги. Результат за 15-30 секунд.',

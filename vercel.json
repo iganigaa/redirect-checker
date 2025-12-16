@@ -17,11 +17,22 @@
       "has": [
         {
           "type": "host",
+          "value": "www.i-burdukov.ru"
+        }
+      ],
+      "destination": "https://i-burdukov.ru/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
           "value": "(?<host>.*\\.vercel\\.app)"
         }
       ],
       "destination": "https://i-burdukov.ru/:path*",
-      "statusCode": 301
+      "permanent": true
     }
   ]
 }

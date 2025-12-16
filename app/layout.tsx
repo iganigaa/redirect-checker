@@ -13,8 +13,12 @@ const montserrat = Montserrat({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://i-burdukov.ru'),
   title: "Игорь Бурдуков - SEO-специалист",
   description: "Сайт SEO-специалиста Бурдукова Игоря. SEO инструменты, блог, нейросети.",
+  alternates: {
+    canonical: '/',
+  },
 };
 
 
