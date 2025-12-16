@@ -336,7 +336,7 @@ export default function Home() {
           <div className="w-full">
             <h1 className="text-3xl font-semibold text-gray-900">Проверка основных редиректов сайта</h1>
             <p className="text-sm text-gray-500 mt-2 font-normal">Комплексная диагностика HTTP заголовков и цепочек переадресации по 11 критериям.</p>
-          </div>
+        </div>
           
           {/* Settings Card */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 w-full">
@@ -405,7 +405,7 @@ export default function Home() {
         </div>
         
           {/* Dashboard Stats */}
-          {results.length > 0 && (
+        {results.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
           <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between group hover:border-green-300 transition-colors">
               <div>
@@ -428,7 +428,7 @@ export default function Home() {
             </div>
 
             <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between group hover:border-red-300 transition-colors">
-              <div>
+                <div>
                 <p className="text-sm font-medium text-gray-500">Ошибки</p>
                 <p className="text-3xl font-semibold text-gray-900 mt-1">{errorCount}</p>
               </div>
@@ -505,7 +505,7 @@ export default function Home() {
                     />
                   </div>
                 </div>
-
+                
                 {/* Подсказка для пользователей */}
                 {showHint && (
                   <div className="border-t border-gray-200 bg-gradient-to-r from-indigo-50 to-purple-50 p-4">
@@ -536,13 +536,13 @@ export default function Home() {
                           </div>
                         </div>
                       </div>
-                      <button
+                    <button
                         onClick={() => setShowHint(false)}
                         className="p-1 text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
                         title="Скрыть подсказку"
                       >
                         <X className="w-4 h-4" />
-                      </button>
+                    </button>
                     </div>
                   </div>
                 )}
@@ -793,7 +793,7 @@ export default function Home() {
           {/* Сравнение с аналогами */}
           <section className="bg-white rounded-xl border border-gray-200 shadow-sm p-8">
             <h2 className="text-2xl font-semibold text-gray-900 mb-6">Сравнение с аналогами</h2>
-            
+
             <div className="overflow-x-auto">
               <table className="w-full text-sm border-collapse">
                 <thead>
@@ -828,13 +828,13 @@ export default function Home() {
                     <td className="border border-gray-300 px-4 py-3 bg-purple-50">✅ Да</td>
                     <td className="border border-gray-300 px-4 py-3">✅ Да</td>
                     <td className="border border-gray-300 px-4 py-3">⚠️ Ограничен</td>
-                  </tr>
+                    </tr>
                   <tr>
                     <td className="border border-gray-300 px-4 py-3 font-medium">Canonical-проверка</td>
                     <td className="border border-gray-300 px-4 py-3 bg-purple-50">✅ Да</td>
                     <td className="border border-gray-300 px-4 py-3">✅ Да</td>
                     <td className="border border-gray-300 px-4 py-3">❌ Нет</td>
-                  </tr>
+                      </tr>
                 </tbody>
               </table>
             </div>
@@ -882,11 +882,64 @@ export default function Home() {
             </button>
           </section>
 
+          {/* Author Box with Schema.org markup */}
+          <section 
+            className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl border-l-4 border-blue-600 p-6"
+            itemScope 
+            itemType="https://schema.org/Person"
+          >
+            <div className="flex flex-col md:flex-row gap-6 items-start">
+              <img 
+                src="https://i-burdukov.ru/images/igor-burdukov-avatar.jpg" 
+                alt="Игорь Бурдуков" 
+                itemProp="image"
+                className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-lg flex-shrink-0"
+              />
+              
+              <div className="flex-1">
+                <h3 
+                  itemProp="name"
+                  className="text-xl font-bold text-gray-900 mb-2"
+                >
+                  Игорь Бурдуков
+                </h3>
+                <p 
+                  itemProp="jobTitle"
+                  className="text-sm font-semibold text-blue-700 mb-3"
+                >
+                  SEO-специалист, разработчик инструментов
+                </p>
+                <p 
+                  itemProp="description"
+                  className="text-sm text-gray-700 leading-relaxed mb-4"
+                >
+                  Создаю бесплатные SEO-инструменты для технического аудита сайтов. 
+                  Специализируюсь на проверке редиректов, индексации и производительности.
+                </p>
+                <div className="flex flex-wrap items-center gap-4 text-sm">
+                  <span className="text-gray-700">
+                    <strong className="text-gray-900">Контакты:</strong>
+                  </span>
+                  <a 
+                    href="https://t.me/iganiga1" 
+                    itemProp="sameAs"
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium transition-colors"
+                  >
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.14.18-.357.295-.6.295-.002 0-.003 0-.005 0l.213-3.054 5.56-5.022c.24-.213-.054-.334-.373-.121l-6.869 4.326-2.96-.924c-.64-.203-.658-.64.135-.954l11.566-4.458c.538-.196 1.006.128.832.941z"/>
+                    </svg>
+                    Telegram: @iganiga1
+                  </a>
+                </div>
+                <meta itemProp="url" content="https://i-burdukov.ru" />
+            </div>
+          </div>
+          </section>
+
           {/* Footer Info */}
           <section className="bg-gray-50 rounded-xl border border-gray-200 p-6 text-center text-sm text-gray-600">
-            <p className="mb-2">
-              <strong className="text-gray-900">Автор:</strong> Игорь Бурдуков, SEO-специалист
-            </p>
             <p className="mb-2">
               <strong className="text-gray-900">Обновлено:</strong> 16 декабря 2025
             </p>
@@ -902,7 +955,7 @@ export default function Home() {
               </a>
             </p>
           </section>
-        </div>
+      </div>
       </main>
     </div>
   );
