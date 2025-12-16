@@ -550,6 +550,359 @@ export default function Home() {
             </div>
           )}
         </div>
+
+        {/* Educational Content Section */}
+        <div className="max-w-4xl mx-auto mt-16 space-y-12">
+          {/* Schema.org JSON-LD */}
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify({
+                "@context": "https://schema.org",
+                "@type": "SoftwareApplication",
+                "name": "REDIRECT CHECKER",
+                "applicationCategory": "SEO Tool",
+                "operatingSystem": "Web",
+                "offers": {
+                  "@type": "Offer",
+                  "price": "0",
+                  "priceCurrency": "USD"
+                },
+                "featureList": [
+                  "11 типов проверки редиректов",
+                  "Эмуляция Googlebot/Yandex Bot",
+                  "Экспорт CSV",
+                  "Проверка canonical-тегов"
+                ],
+                "author": {
+                  "@type": "Person",
+                  "name": "Игорь Бурдуков"
+                },
+                "datePublished": "2025-12-16",
+                "dateModified": "2025-12-16"
+              })
+            }}
+          />
+
+          {/* Executive Summary */}
+          <section className="bg-white rounded-xl border border-gray-200 shadow-sm p-8">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+              REDIRECT CHECKER — автоматическая проверка редиректов сайта для SEO
+            </h2>
+            <div className="prose prose-gray max-w-none">
+              <p className="text-lg text-gray-700 leading-relaxed">
+                <strong>REDIRECT CHECKER</strong> — бесплатный инструмент для автоматической проверки 11 критических сценариев редиректов сайта: HTTPS, WWW, trailing slash, регистр URL, index-файлы и canonical-теги. Проверка занимает 15-30 секунд и показывает цепочки редиректов, коды ответа (301, 302, 404) и конкретные рекомендации по исправлению ошибок — без необходимости вручную тестировать каждый URL.
+              </p>
+              <p className="text-lg text-gray-700 leading-relaxed">
+                <strong>Результат:</strong> чистая структура редиректов, которую правильно индексируют Google, Yandex и generative AI-движки (ChatGPT, Perplexity).
+              </p>
+            </div>
+          </section>
+
+          {/* Кому нужен */}
+          <section className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-xl border border-purple-200 p-8">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-6">Кому нужен REDIRECT CHECKER</h2>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="bg-white rounded-lg p-5 border border-gray-200">
+                <div className="text-purple-600 font-semibold mb-2">SEO-специалисты</div>
+                <p className="text-sm text-gray-700">Проверяют технический аудит перед запуском сайта или после миграции</p>
+              </div>
+              <div className="bg-white rounded-lg p-5 border border-gray-200">
+                <div className="text-purple-600 font-semibold mb-2">Веб-мастера</div>
+                <p className="text-sm text-gray-700">Устраняют дублирование страниц и лишние цепочки редиректов</p>
+              </div>
+              <div className="bg-white rounded-lg p-5 border border-gray-200">
+                <div className="text-purple-600 font-semibold mb-2">Владельцы сайтов</div>
+                <p className="text-sm text-gray-700">Контролируют, что все версии URL (с www/без www, HTTP/HTTPS) ведут на одну каноническую</p>
+              </div>
+              <div className="bg-white rounded-lg p-5 border border-gray-200">
+                <div className="text-purple-600 font-semibold mb-2">Digital-агентства</div>
+                <p className="text-sm text-gray-700">Автоматизируют рутинные проверки для клиентских проектов</p>
+              </div>
+            </div>
+          </section>
+
+          {/* Как работает */}
+          <section className="bg-white rounded-xl border border-gray-200 shadow-sm p-8">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-6">Как работает REDIRECT CHECKER</h2>
+            
+            <div className="space-y-6">
+              <div className="border-l-4 border-purple-500 pl-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Шаг 1. Ввод URL</h3>
+                <p className="text-gray-700 mb-3">Укажите домен (например, example.com) и выберите User-Agent:</p>
+                <ul className="space-y-2 text-sm text-gray-600">
+                  <li>• <strong>Googlebot Desktop</strong> — для десктопной индексации</li>
+                  <li>• <strong>Googlebot Smartphone</strong> — для mobile-first indexing</li>
+                  <li>• <strong>Yandex Bot</strong> — для проверки поведения в Яндексе</li>
+                </ul>
+              </div>
+
+              <div className="border-l-4 border-blue-500 pl-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Шаг 2. Автоматическая проверка 11 сценариев</h3>
+                <p className="text-gray-700 mb-4">Инструмент отправляет запросы и анализирует:</p>
+                
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm border-collapse">
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="border border-gray-300 px-3 py-2 text-left">№</th>
+                        <th className="border border-gray-300 px-3 py-2 text-left">Сценарий</th>
+                        <th className="border border-gray-300 px-3 py-2 text-left">Что проверяется</th>
+                        <th className="border border-gray-300 px-3 py-2 text-center">Код ответа</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-gray-700">
+                      <tr><td className="border border-gray-300 px-3 py-2">1</td><td className="border border-gray-300 px-3 py-2">HTTP → HTTPS</td><td className="border border-gray-300 px-3 py-2">Редирект с http:// на https://</td><td className="border border-gray-300 px-3 py-2 text-center">301 ✅</td></tr>
+                      <tr className="bg-gray-50"><td className="border border-gray-300 px-3 py-2">2</td><td className="border border-gray-300 px-3 py-2">WWW vs без WWW</td><td className="border border-gray-300 px-3 py-2">Консистентность www.site.com ↔ site.com</td><td className="border border-gray-300 px-3 py-2 text-center">301 ✅</td></tr>
+                      <tr><td className="border border-gray-300 px-3 py-2">3</td><td className="border border-gray-300 px-3 py-2">Множественные слеши</td><td className="border border-gray-300 px-3 py-2">Удаление // в URL</td><td className="border border-gray-300 px-3 py-2 text-center">301/200</td></tr>
+                      <tr className="bg-gray-50"><td className="border border-gray-300 px-3 py-2">4</td><td className="border border-gray-300 px-3 py-2">Регистр URL</td><td className="border border-gray-300 px-3 py-2">/CART → /cart (lowercase)</td><td className="border border-gray-300 px-3 py-2 text-center">301 ✅</td></tr>
+                      <tr><td className="border border-gray-300 px-3 py-2">5</td><td className="border border-gray-300 px-3 py-2">Index-файлы</td><td className="border border-gray-300 px-3 py-2">/index.html → /</td><td className="border border-gray-300 px-3 py-2 text-center">301 ✅</td></tr>
+                      <tr className="bg-gray-50"><td className="border border-gray-300 px-3 py-2">6</td><td className="border border-gray-300 px-3 py-2">Trailing slash</td><td className="border border-gray-300 px-3 py-2">/page/ vs /page (единообразие)</td><td className="border border-gray-300 px-3 py-2 text-center">301/200</td></tr>
+                      <tr><td className="border border-gray-300 px-3 py-2">7</td><td className="border border-gray-300 px-3 py-2">Старые расширения</td><td className="border border-gray-300 px-3 py-2">.html, .php → чистые URL</td><td className="border border-gray-300 px-3 py-2 text-center">301 ✅</td></tr>
+                      <tr className="bg-gray-50"><td className="border border-gray-300 px-3 py-2">8</td><td className="border border-gray-300 px-3 py-2">Canonical тег</td><td className="border border-gray-300 px-3 py-2">&lt;link rel="canonical"&gt; на странице</td><td className="border border-gray-300 px-3 py-2 text-center">Presence ✅</td></tr>
+                      <tr><td className="border border-gray-300 px-3 py-2">9</td><td className="border border-gray-300 px-3 py-2">404-страницы</td><td className="border border-gray-300 px-3 py-2">Корректный код для несуществующих URL</td><td className="border border-gray-300 px-3 py-2 text-center">404 ✅</td></tr>
+                      <tr className="bg-gray-50"><td className="border border-gray-300 px-3 py-2">10</td><td className="border border-gray-300 px-3 py-2">Цепочки редиректов</td><td className="border border-gray-300 px-3 py-2">Обнаружение 2+ последовательных 301/302</td><td className="border border-gray-300 px-3 py-2 text-center">❌ Ошибка</td></tr>
+                      <tr><td className="border border-gray-300 px-3 py-2">11</td><td className="border border-gray-300 px-3 py-2">User-Agent эмуляция</td><td className="border border-gray-300 px-3 py-2">Разница в ответах для bot/desktop/mobile</td><td className="border border-gray-300 px-3 py-2 text-center">Сравнение</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="border-l-4 border-green-500 pl-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Шаг 3. Анализ результатов</h3>
+                <p className="text-gray-700 mb-3">Инструмент показывает:</p>
+                <ul className="space-y-2 text-sm text-gray-600">
+                  <li>✅ <strong>Passed</strong> — редирект настроен правильно (301, canonical присутствует)</li>
+                  <li>⚠️ <strong>Warning</strong> — потенциальная проблема (302 вместо 301, цепочка из 2 редиректов)</li>
+                  <li>❌ <strong>Error</strong> — критическая ошибка (отсутствие HTTPS-редиректа, 3+ цепочка)</li>
+                </ul>
+              </div>
+
+              <div className="border-l-4 border-indigo-500 pl-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Шаг 4. Экспорт и исправление</h3>
+                <ul className="space-y-2 text-sm text-gray-600">
+                  <li>• <strong>CSV-экспорт</strong> — для передачи разработчикам</li>
+                  <li>• <strong>Копирование в буфер</strong> — для вставки в отчёт</li>
+                  <li>• <strong>Фильтрация</strong> — показать только ошибки или предупреждения</li>
+                </ul>
+              </div>
+            </div>
+          </section>
+
+          {/* FAQ */}
+          <section className="bg-white rounded-xl border border-gray-200 shadow-sm p-8">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-6">FAQ — Часто задаваемые вопросы</h2>
+            
+            <div className="space-y-6">
+              <div className="border-b border-gray-200 pb-6 last:border-b-0">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Почему важны редиректы для SEO?</h3>
+                <p className="text-gray-700 leading-relaxed">
+                  Неправильные редиректы (302 вместо 301, цепочки 3+ шагов) снижают краулинговый бюджет и размывают link equity — Google может не передавать вес ссылок через длинные цепочки. Canonical-теги предотвращают дублирование контента в индексе.
+                </p>
+              </div>
+
+              <div className="border-b border-gray-200 pb-6 last:border-b-0">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Что такое «цепочка редиректов» и почему она вредна?</h3>
+                <p className="text-gray-700 leading-relaxed">
+                  Цепочка — это когда URL A → URL B → URL C (2+ редиректа подряд). Google рекомендует максимум 1 редирект на путь — каждый дополнительный увеличивает время загрузки и риск потери индексации.
+                </p>
+              </div>
+
+              <div className="border-b border-gray-200 pb-6 last:border-b-0">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Какой код редиректа правильный: 301 или 302?</h3>
+                <div className="space-y-3 text-gray-700">
+                  <p>• <strong>301 Moved Permanently</strong> — для постоянного переезда страницы (передаёт ~90-99% link juice)</p>
+                  <p>• <strong>302 Found</strong> — для временного редиректа (не передаёт вес, Google может индексировать старый URL)</p>
+                  <p className="text-purple-700 font-medium">Для SEO всегда используйте 301, если перенос окончательный.</p>
+                </div>
+              </div>
+
+              <div className="border-b border-gray-200 pb-6 last:border-b-0">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Зачем проверять canonical-теги?</h3>
+                <p className="text-gray-700 leading-relaxed">
+                  <code className="bg-gray-100 px-2 py-1 rounded text-sm">&lt;link rel="canonical" href="..."&gt;</code> указывает Google, какая версия страницы главная (для дублей /page и /page/). Без canonical AI-движки (ChatGPT, Perplexity) могут цитировать неправильный URL.
+                </p>
+              </div>
+
+              <div className="pb-0">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Как часто нужно проверять редиректы?</h3>
+                <ul className="space-y-2 text-gray-700">
+                  <li>• <strong>После миграции</strong> (смена домена, переезд на HTTPS)</li>
+                  <li>• <strong>Раз в квартал</strong> — для выявления новых ошибок</li>
+                  <li>• <strong>Перед техническим SEO-аудитом</strong></li>
+                </ul>
+              </div>
+            </div>
+          </section>
+
+          {/* Преимущества */}
+          <section className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-200 p-8">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-6">Преимущества REDIRECT CHECKER</h2>
+            
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="bg-white rounded-lg p-5 border border-gray-200 flex items-start gap-3">
+                <CheckCircle2 className="w-6 h-6 text-green-600 flex-shrink-0 mt-1" />
+                <div>
+                  <div className="font-semibold text-gray-900 mb-1">Скорость</div>
+                  <p className="text-sm text-gray-700">Проверка 11 сценариев за 15-30 секунд (вручную — 2-3 часа на 50 URL)</p>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg p-5 border border-gray-200 flex items-start gap-3">
+                <CheckCircle2 className="w-6 h-6 text-green-600 flex-shrink-0 mt-1" />
+                <div>
+                  <div className="font-semibold text-gray-900 mb-1">Эмуляция User-Agent</div>
+                  <p className="text-sm text-gray-700">Тестирование от имени Googlebot, Googlebot Smartphone, Yandex Bot</p>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg p-5 border border-gray-200 flex items-start gap-3">
+                <CheckCircle2 className="w-6 h-6 text-green-600 flex-shrink-0 mt-1" />
+                <div>
+                  <div className="font-semibold text-gray-900 mb-1">Детальный лог</div>
+                  <p className="text-sm text-gray-700">Коды ответа (301, 302, 200, 404), заголовки HTTP, финальный URL цепочки</p>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg p-5 border border-gray-200 flex items-start gap-3">
+                <CheckCircle2 className="w-6 h-6 text-green-600 flex-shrink-0 mt-1" />
+                <div>
+                  <div className="font-semibold text-gray-900 mb-1">Экспорт</div>
+                  <p className="text-sm text-gray-700">CSV для интеграции с Screaming Frog, Google Sheets, отчётами</p>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg p-5 border border-gray-200 flex items-start gap-3">
+                <CheckCircle2 className="w-6 h-6 text-green-600 flex-shrink-0 mt-1" />
+                <div>
+                  <div className="font-semibold text-gray-900 mb-1">Resizable таблица</div>
+                  <p className="text-sm text-gray-700">Изменяемая ширина колонок для удобного просмотра</p>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg p-5 border border-gray-200 flex items-start gap-3">
+                <CheckCircle2 className="w-6 h-6 text-green-600 flex-shrink-0 mt-1" />
+                <div>
+                  <div className="font-semibold text-gray-900 mb-1">100% бесплатно</div>
+                  <p className="text-sm text-gray-700">Без регистрации, без лимитов, без скрытых платежей</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Сравнение с аналогами */}
+          <section className="bg-white rounded-xl border border-gray-200 shadow-sm p-8">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-6">Сравнение с аналогами</h2>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="bg-gray-50">
+                    <th className="border border-gray-300 px-4 py-3 text-left font-semibold">Критерий</th>
+                    <th className="border border-gray-300 px-4 py-3 text-left font-semibold bg-purple-50">REDIRECT CHECKER</th>
+                    <th className="border border-gray-300 px-4 py-3 text-left font-semibold">Screaming Frog</th>
+                    <th className="border border-gray-300 px-4 py-3 text-left font-semibold">Online Redirect Checker</th>
+                  </tr>
+                </thead>
+                <tbody className="text-gray-700">
+                  <tr>
+                    <td className="border border-gray-300 px-4 py-3 font-medium">Проверка 11 сценариев</td>
+                    <td className="border border-gray-300 px-4 py-3 bg-purple-50">✅ Все</td>
+                    <td className="border border-gray-300 px-4 py-3">⚠️ Частично (нужна настройка)</td>
+                    <td className="border border-gray-300 px-4 py-3">❌ 1-2 сценария</td>
+                  </tr>
+                  <tr className="bg-gray-50">
+                    <td className="border border-gray-300 px-4 py-3 font-medium">User-Agent эмуляция</td>
+                    <td className="border border-gray-300 px-4 py-3 bg-purple-50">✅ 3 варианта</td>
+                    <td className="border border-gray-300 px-4 py-3">✅ Настраивается</td>
+                    <td className="border border-gray-300 px-4 py-3">❌ Нет</td>
+                  </tr>
+                  <tr>
+                    <td className="border border-gray-300 px-4 py-3 font-medium">Цена</td>
+                    <td className="border border-gray-300 px-4 py-3 bg-purple-50">🆓 Бесплатно</td>
+                    <td className="border border-gray-300 px-4 py-3">💰 $259/год (Lite)</td>
+                    <td className="border border-gray-300 px-4 py-3">🆓 Бесплатно</td>
+                  </tr>
+                  <tr className="bg-gray-50">
+                    <td className="border border-gray-300 px-4 py-3 font-medium">Экспорт CSV</td>
+                    <td className="border border-gray-300 px-4 py-3 bg-purple-50">✅ Да</td>
+                    <td className="border border-gray-300 px-4 py-3">✅ Да</td>
+                    <td className="border border-gray-300 px-4 py-3">⚠️ Ограничен</td>
+                  </tr>
+                  <tr>
+                    <td className="border border-gray-300 px-4 py-3 font-medium">Canonical-проверка</td>
+                    <td className="border border-gray-300 px-4 py-3 bg-purple-50">✅ Да</td>
+                    <td className="border border-gray-300 px-4 py-3">✅ Да</td>
+                    <td className="border border-gray-300 px-4 py-3">❌ Нет</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          {/* Технические детали */}
+          <section className="bg-gray-900 rounded-xl border border-gray-700 p-8 text-gray-100">
+            <h2 className="text-2xl font-semibold text-white mb-6">Технические детали</h2>
+            
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-3">Что проверяется на уровне HTTP:</h3>
+                <pre className="bg-gray-800 p-4 rounded-lg text-sm text-green-400 overflow-x-auto">
+{`1. Status Code: 200, 301, 302, 404, 500
+2. Headers: Location, Link (canonical), User-Agent
+3. Redirect Chain: количество хопов A→B→C
+4. Final URL: куда в итоге попадает запрос`}
+                </pre>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-3">Рекомендации по исправлению ошибок:</h3>
+                <ul className="space-y-2 text-gray-300">
+                  <li>• <strong className="text-white">302 вместо 301</strong> → изменить .htaccess или nginx.conf</li>
+                  <li>• <strong className="text-white">Цепочка 3+ редиректов</strong> → убрать промежуточные, сделать прямой 301</li>
+                  <li>• <strong className="text-white">Отсутствие HTTPS</strong> → настроить SSL-сертификат + редирект с HTTP</li>
+                  <li>• <strong className="text-white">Нет canonical</strong> → добавить <code className="bg-gray-800 px-2 py-1 rounded">&lt;link rel="canonical"&gt;</code> в <code className="bg-gray-800 px-2 py-1 rounded">&lt;head&gt;</code></li>
+                </ul>
+              </div>
+            </div>
+          </section>
+
+          {/* CTA */}
+          <section className="bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl p-8 text-white text-center">
+            <h2 className="text-3xl font-bold mb-4">Проверьте редиректы вашего сайта прямо сейчас</h2>
+            <p className="text-lg text-purple-100 mb-6">
+              Получите детальный отчёт с рекомендациями по исправлению за 30 секунд
+            </p>
+            <button
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              className="bg-white text-purple-600 px-8 py-4 rounded-lg font-semibold text-lg hover:bg-gray-100 transition-colors inline-flex items-center gap-2"
+            >
+              <Search className="w-5 h-5" />
+              Начать проверку
+            </button>
+          </section>
+
+          {/* Footer Info */}
+          <section className="bg-gray-50 rounded-xl border border-gray-200 p-6 text-center text-sm text-gray-600">
+            <p className="mb-2">
+              <strong className="text-gray-900">Автор:</strong> Игорь Бурдуков, SEO-специалист
+            </p>
+            <p className="mb-2">
+              <strong className="text-gray-900">Обновлено:</strong> 16 декабря 2025
+            </p>
+            <p>
+              <strong className="text-gray-900">Источники:</strong>{' '}
+              <a 
+                href="https://developers.google.com/search/docs/crawling-indexing/301-redirects" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-purple-600 hover:text-purple-700 underline"
+              >
+                Google Search Central — редиректы
+              </a>
+            </p>
+          </section>
+        </div>
       </main>
     </div>
   );
