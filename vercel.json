@@ -21,7 +21,6 @@
         }
       ],
       "destination": "https://i-burdukov.ru/:path*",
-      "permanent": true,
       "statusCode": 301
     }
   ]
