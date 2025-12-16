@@ -248,7 +248,7 @@ async function checkWebsite(baseUrl: string, userAgent: string): Promise<CheckRe
     redirectSteps: chainCheck.redirectSteps || [],
     fact: generateFact(chainCheck),
     recommendation: generateRecommendation(chainCheck, 'Лишние редиректы', '≤1 редиректа'),
-    status: chainCheck.redirectCount <= 1 ? '✅' : '⚠️',
+    status: chainCheck.redirectCount <= 1 ? '✅' : '❌',
     message: chainCheck.redirectCount <= 1 ? 'Оптимальная цепочка' : `Цепочка из ${chainCheck.redirectCount} редиректов`
   });
 
@@ -439,6 +439,9 @@ function generateRecommendation(check: any, checkName: string, expected: string,
     if (check.firstStatus === 404) {
       return 'Всё настроено корректно. Index-файлы недоступны (404).';
     }
+    if (check.firstStatus === 403 || check.finalStatus === 403) {
+      return 'Редирект настроен некорректно. Конечный статус: 403. Исправить редирект.';
+    }
     if (check.redirectCount > 1) {
       return `Обнаружена цепочка из ${check.redirectCount} редиректов. Упростить до одного прямого редиректа.`;
     }
@@ -607,9 +610,11 @@ function getCaseMessage(check: any, targetUrl: string): string {
 function analyzeIndexRedirect(check: any, targetUrl: string): '✅' | '❌' | '⚠️' {
   if (check.firstStatus === 200) return '⚠️';
   if (check.firstStatus === 404) return '✅';
+  if (check.firstStatus === 403) return '❌'; // 403 - ошибка
   if (check.firstStatus !== 301 && check.firstStatus !== 308) return '❌';
   if (check.redirectCount > 1) return '❌'; // Цепочка редиректов - ошибка
   if (check.finalStatus === 404) return '❌'; // Редирект на 404 - ошибка
+  if (check.finalStatus === 403) return '❌'; // Редирект на 403 - ошибка
   if (check.finalStatus !== 200) return '❌'; // Некорректный конечный статус
   if (normalizeUrl(check.finalUrl) === normalizeUrl(targetUrl)) return '✅';
   return '❌';
@@ -618,8 +623,10 @@ function analyzeIndexRedirect(check: any, targetUrl: string): '✅' | '❌' | '�
 function getIndexMessage(check: any, targetUrl: string): string {
   if (check.firstStatus === 200) return '200 на index-файл';
   if (check.firstStatus === 404) return 'Всё ок (404)';
+  if (check.firstStatus === 403) return 'Ошибка: статус 403';
   if (check.redirectCount > 1) return `Цепочка редиректов (${check.redirectCount})`;
   if (check.finalStatus === 404) return 'Редирект на 404';
+  if (check.finalStatus === 403) return 'Редирект на 403';
   if (check.finalStatus !== 200) return `Ошибка: статус ${check.finalStatus}`;
   if (normalizeUrl(check.finalUrl) === normalizeUrl(targetUrl)) return 'Прямой редирект';
   return 'Нет редиректа';
@@ -663,16 +670,18 @@ function getOldExtensionMessage(check: any, targetUrl: string): string {
 }
 
 function analyze404(check: any): '✅' | '❌' | '⚠️' {
-  if (check.finalStatus === 404) return '✅';
+  if (check.finalStatus === 404 && check.redirectCount === 0) return '✅';
+  if (check.finalStatus === 404 && check.redirectCount > 0) return '⚠️';
   if (check.finalStatus === 200) return '❌';
-  if (check.firstStatus === 301 || check.firstStatus === 302) return '⚠️';
+  if (check.firstStatus === 301 || check.firstStatus === 302 || check.firstStatus === 308) return '⚠️';
   return '❌';
 }
 
 function get404Message(check: any): string {
-  if (check.finalStatus === 404) return 'Всё ок';
+  if (check.finalStatus === 404 && check.redirectCount === 0) return 'Всё ок';
+  if (check.finalStatus === 404 && check.redirectCount > 0) return `Цепочка редиректов (${check.redirectCount})`;
   if (check.finalStatus === 200) return '200 (soft 404)';
-  if (check.firstStatus === 301 || check.firstStatus === 302) return '302 или 301';
+  if (check.firstStatus === 301 || check.firstStatus === 302 || check.firstStatus === 308) return 'Редирект на 404';
   return 'Некорректная обработка';
 }
 
