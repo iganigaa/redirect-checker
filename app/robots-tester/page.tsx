@@ -304,10 +304,11 @@ export default function RobotsTesterPage() {
             {viewMode === 'detailed' && (
               <div className="space-y-6">
                 {/* ... остальной код из предыдущей версии ... */}
-            </div>
-          )}
-        </div>
-      )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
