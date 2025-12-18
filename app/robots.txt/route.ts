@@ -22,20 +22,40 @@ Disallow: /
   // Для основного домена - разрешаем индексацию
   const robotsTxt = `# Robots.txt для i-burdukov.ru
 User-agent: *
-Allow: /
+# Разрешаем доступ к медиа-файлам и стилям
+Allow: /*.jpg
+Allow: /*.jpeg
+Allow: /*.png
+Allow: /*.gif
+Allow: /*.webp
+Allow: /*.svg
+Allow: /*.ico
+Allow: /*.avif
+Allow: /*.css
+Allow: /*.js
 
-# Sitemap location
-Sitemap: https://i-burdukov.ru/sitemap.xml
+# Закрываем системные папки Next.js и Vercel
+Disallow: /_next/
+Disallow: /_vercel/
+Disallow: /api/
 
-# Crawl-delay для всех ботов
-Crawl-delay: 1
-
-# Яндекс директивы для очистки параметров
 User-agent: Yandex
+# Разрешаем доступ к медиа-файлам и стилям для Яндекса
+Allow: /*.jpg
+Allow: /*.jpeg
+Allow: /*.png
+Allow: /*.gif
+Allow: /*.webp
+Allow: /*.svg
+Allow: /*.ico
+Allow: /*.avif
+Allow: /*.css
+Allow: /*.js
+
+# Очистка параметров для Яндекса
 Clean-param: utm_source&utm_medium&utm_campaign&gclid&fbclid&yclid
 
-# Не индексировать API routes
-Disallow: /api/
+Sitemap: https://i-burdukov.ru/sitemap.xml
 `;
   
   return new Response(robotsTxt, {
