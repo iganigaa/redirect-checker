@@ -330,16 +330,21 @@ function generateFact(check: any): string {
     return `${check.finalStatus || '—'} → ${check.finalUrl || '—'}`;
   }
   
-  const steps = check.redirectSteps.map((step: RedirectStep, index: number) => {
-    if (index === check.redirectSteps.length - 1) {
-      return `${step.statusCode} → ${step.url}`;
-    }
-    return `${step.statusCode}`;
-  });
+  // Разделяем редиректы (300-399) и финальный ответ
+  const redirects = check.redirectSteps.filter((step: RedirectStep) => 
+    step.statusCode >= 300 && step.statusCode < 400
+  );
   
-  // URL уже включен в последний элемент steps, не добавляем повторно
-  return steps.join(' → ');
-
+  const finalStep = check.redirectSteps[check.redirectSteps.length - 1];
+  
+  // Если нет редиректов, показываем только финальный статус
+  if (redirects.length === 0) {
+    return `${finalStep.statusCode} → ${finalStep.url}`;
+  }
+  
+  // Показываем редиректы + финальный статус отдельно
+  const redirectCodes = redirects.map((step: RedirectStep) => step.statusCode).join(' → ');
+  return `${redirectCodes} → ${finalStep.statusCode} → ${finalStep.url}`;
 }
 
 // Генерация рекомендаций для специалиста
