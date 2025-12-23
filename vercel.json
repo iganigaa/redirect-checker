@@ -1,5 +1,10 @@
 {
   "trailingSlash": false,
+  "functions": {
+    "app/api/price-comparator/route.ts": {
+      "maxDuration": 300
+    }
+  },
   "headers": [
     {
       "source": "/(.*)",
