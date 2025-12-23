@@ -22,7 +22,6 @@ Disallow: /
   // Для основного домена - разрешаем индексацию
   const robotsTxt = `# Robots.txt для i-burdukov.ru
 User-agent: *
-# Разрешаем доступ к медиа-файлам и стилям
 Allow: /*.jpg
 Allow: /*.jpeg
 Allow: /*.png
@@ -34,13 +33,11 @@ Allow: /*.avif
 Allow: /*.css
 Allow: /*.js
 
-# Закрываем системные папки Next.js и Vercel
 Disallow: /_next/
 Disallow: /_vercel/
 Disallow: /api/
 
 User-agent: Yandex
-# Разрешаем доступ к медиа-файлам и стилям для Яндекса
 Allow: /*.jpg
 Allow: /*.jpeg
 Allow: /*.png
@@ -52,7 +49,6 @@ Allow: /*.avif
 Allow: /*.css
 Allow: /*.js
 
-# Очистка параметров для Яндекса
 Clean-param: utm_source&utm_medium&utm_campaign&gclid&fbclid&yclid
 
 Sitemap: https://i-burdukov.ru/sitemap.xml

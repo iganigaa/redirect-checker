@@ -201,6 +201,21 @@ export default function DashboardHome() {
                 Поиск сущностей в графе знаний Google
               </p>
             </Link>
+
+            <Link
+              href="/price-comparator"
+              className="bg-white hover:bg-pink-50 rounded-xl shadow-sm border border-gray-200 p-4 sm:p-5 transition-all hover:shadow-md group"
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-xl sm:text-2xl">💰</span>
+                <span className="text-sm sm:text-base font-semibold text-gray-900 group-hover:text-pink-600">
+                  Price Comparator
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm text-gray-600">
+                AI-анализ цен конкурентов и сопоставление услуг
+              </p>
+            </Link>
           </div>
         </div>
 

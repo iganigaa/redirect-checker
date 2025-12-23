@@ -37,5 +37,46 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ---
 
-**Last updated:** December 16, 2025  
+## 🛠 SEO Tools Collection
+
+This project includes several powerful SEO tools:
+
+### 💰 Price Comparator (NEW!)
+AI-powered tool for automatic competitor price analysis.
+
+**Features:**
+- ✅ Parses HTML from competitor websites
+- ✅ AI extracts prices using GPT-4
+- ✅ Intelligent service matching
+- ✅ Comparison table with all competitors
+- ✅ CSV export
+
+**Quick Start:**
+1. Get OpenAI API key from [platform.openai.com](https://platform.openai.com)
+2. Open [http://localhost:3000/price-comparator](http://localhost:3000/price-comparator)
+3. Enter your site URLs and competitor URLs
+4. Click "Начать анализ"
+
+**Documentation:**
+- [Quick Start Guide](./PRICE_COMPARATOR_README.md) - Start in 3 minutes
+- [Full Documentation](./PRICE_COMPARATOR_DOCS.md) - Architecture, features, troubleshooting
+- [API Reference](./PRICE_COMPARATOR_API.md) - API endpoints and SSE streaming
+- [Examples & Use Cases](./PRICE_COMPARATOR_EXAMPLES.md) - Real-world scenarios
+- [Tech Stack](./PRICE_COMPARATOR_STACK.md) - Technologies and architecture
+- [Summary Report](./PRICE_COMPARATOR_SUMMARY.md) - Overview and checklist
+
+**Cost:** ~$0.12 per analysis (5 competitors)
+
+### Other Tools
+- **Redirect Checker** - Check redirects and redirect chains
+- **Clean-param** - Clean URL parameters
+- **Robots Tester** - Test robots.txt
+- **Traffic Calculator** - Calculate potential traffic
+- **Transliterator** - Generate SEO-friendly URLs
+- **URL Cleaner** - Bulk URL processing
+- **Knowledge Graph** - Search Google Knowledge Graph
+
+---
+
+**Last updated:** December 23, 2025  
 **Status:** Production ready ✅
