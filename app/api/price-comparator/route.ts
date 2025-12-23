@@ -116,6 +116,14 @@ export async function POST(request: NextRequest) {
           'our_site'
         );
 
+        console.log(`[Main] Our services found: ${ourServices.length}`);
+        
+        if (ourServices.length === 0) {
+          sendError('Не удалось найти услуги и цены на вашем сайте. Проверьте URL.');
+          controller.close();
+          return;
+        }
+
         // Step 4: Extract prices from competitors
         sendProgress('Анализируем конкурентов с помощью AI...');
         
@@ -127,6 +135,7 @@ export async function POST(request: NextRequest) {
           sendProgress(`Анализируем конкурента ${processed}/${competitorTexts.size}: ${name}...`);
           
           const prices = await extractPrices(text, '', apiKey, name);
+          console.log(`[Main] Competitor ${name} services found: ${prices.length}`);
           competitorPrices.set(name, prices);
         }
 
@@ -139,12 +148,22 @@ export async function POST(request: NextRequest) {
           apiKey
         );
 
+        console.log(`[Main] Comparison rows: ${comparison.length}`);
+
         // Send final result
-        sendResult({
+        const resultData = {
           ourServices,
           competitors: Object.fromEntries(competitorPrices),
           comparison
-        });
+        };
+        
+        console.log(`[Main] Sending result:`, JSON.stringify({
+          ourServicesCount: ourServices.length,
+          competitorsCount: competitorPrices.size,
+          comparisonCount: comparison.length
+        }));
+        
+        sendResult(resultData);
 
         controller.close();
       } catch (error) {
@@ -197,13 +216,15 @@ async function extractPrices(
 Текст страницы:
 ${truncatedText}
 
-Верни результат СТРОГО в формате JSON массива:
-[
-  {"service": "Название услуги точно как на сайте", "price": "Цена с указанием валюты"},
-  {"service": "Другая услуга", "price": "Цена"}
-]
+Верни результат СТРОГО в формате JSON объекта:
+{
+  "services": [
+    {"service": "Название услуги точно как на сайте", "price": "Цена с указанием валюты"},
+    {"service": "Другая услуга", "price": "Цена"}
+  ]
+}
 
-Если на странице нет цен или услуг, верни пустой массив: []`;
+Если на странице нет цен или услуг, верни: {"services": []}`;
 
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -240,18 +261,28 @@ ${truncatedText}
     // Parse JSON response
     const parsed = JSON.parse(content);
     
+    console.log(`[extractPrices] Source: ${source}, Parsed:`, JSON.stringify(parsed).substring(0, 500));
+    
     // Handle different response formats
     if (Array.isArray(parsed)) {
+      console.log(`[extractPrices] Returning array with ${parsed.length} items`);
       return parsed;
     } else if (parsed.services && Array.isArray(parsed.services)) {
+      console.log(`[extractPrices] Returning services array with ${parsed.services.length} items`);
       return parsed.services;
     } else if (parsed.prices && Array.isArray(parsed.prices)) {
+      console.log(`[extractPrices] Returning prices array with ${parsed.prices.length} items`);
       return parsed.prices;
     }
     
+    console.log(`[extractPrices] No valid format found, returning empty array`);
     return [];
   } catch (error) {
-    console.error('Error extracting prices:', error);
+    console.error(`[extractPrices] Error for ${source}:`, error);
+    if (error instanceof Error) {
+      console.error(`[extractPrices] Error message:`, error.message);
+      console.error(`[extractPrices] Error stack:`, error.stack);
+    }
     return [];
   }
 }
@@ -332,18 +363,27 @@ ${JSON.stringify(competitorsData, null, 2)}
     const content = data.choices[0].message.content;
     const parsed = JSON.parse(content);
     
+    console.log(`[matchServices] Parsed response:`, JSON.stringify(parsed).substring(0, 500));
+    console.log(`[matchServices] Comparison items: ${parsed.comparison?.length || 0}`);
+    
     return parsed.comparison || [];
   } catch (error) {
-    console.error('Error matching services:', error);
+    console.error('[matchServices] Error:', error);
+    if (error instanceof Error) {
+      console.error('[matchServices] Error message:', error.message);
+    }
     
     // Fallback: create comparison without matching
-    return ourServices.map(service => ({
+    console.log('[matchServices] Using fallback - creating empty comparison');
+    const fallback = ourServices.map(service => ({
       service: service.service,
       ourPrice: service.price,
       competitorPrices: Object.fromEntries(
         Array.from(competitorPrices.keys()).map(name => [name, ''])
       )
     }));
+    console.log(`[matchServices] Fallback created ${fallback.length} rows`);
+    return fallback;
   }
 }
 
