@@ -30,6 +30,21 @@ interface AnalysisResult {
   };
 }
 
+interface HTMLData {
+  url: string;
+  name: string;
+  html: string;
+  textPreview: string;
+  size: number;
+}
+
+interface Stage1Result {
+  ourServiceHTML: string;
+  ourPriceHTML: string;
+  competitorHTMLs: Record<string, string>;
+  competitors: CompetitorUrl[];
+}
+
 export default function PriceComparator() {
   const [ourServiceUrl, setOurServiceUrl] = useState('');
   const [ourPriceUrl, setOurPriceUrl] = useState('');
@@ -42,6 +57,11 @@ export default function PriceComparator() {
   const [error, setError] = useState<string | null>(null);
   const [apiKey, setApiKey] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
+  
+  // Stage management
+  const [currentStage, setCurrentStage] = useState<'input' | 'stage1' | 'stage2'>('input');
+  const [stage1Data, setStage1Data] = useState<Stage1Result | null>(null);
+  const [htmlData, setHtmlData] = useState<HTMLData[]>([]);
 
   const addCompetitor = () => {
     setCompetitors([
@@ -62,10 +82,12 @@ export default function PriceComparator() {
     );
   };
 
-  const handleAnalyze = async () => {
+  // ЭТАП 1: Скачивание HTML
+  const handleStage1 = async () => {
     setError(null);
     setResult(null);
     setProgress('');
+    setHtmlData([]);
 
     // Validation
     if (!ourServiceUrl || !ourPriceUrl) {
@@ -79,17 +101,13 @@ export default function PriceComparator() {
       return;
     }
 
-    if (!apiKey) {
-      setError('Укажите OpenAI API ключ');
-      return;
-    }
-
     setIsAnalyzing(true);
+    setCurrentStage('stage1');
 
     try {
-      setProgress('Загрузка HTML страниц...');
+      setProgress('🌐 Этап 1: Скачивание HTML страниц...');
 
-      const response = await fetch('/api/price-comparator', {
+      const response = await fetch('/api/price-comparator/stage1', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -98,7 +116,6 @@ export default function PriceComparator() {
           ourServiceUrl,
           ourPriceUrl,
           competitors: validCompetitors,
-          apiKey,
         }),
       });
 
@@ -135,11 +152,48 @@ export default function PriceComparator() {
               
               if (data.type === 'progress') {
                 setProgress(data.message);
+              } else if (data.type === 'stage1_complete') {
+                console.log('[SSE Stage1] HTML data received');
+                setStage1Data(data.data);
+                
+                // Prepare HTML data for display
+                const htmlDataArray: HTMLData[] = [];
+                
+                // Add our site
+                htmlDataArray.push({
+                  url: ourServiceUrl,
+                  name: 'Ваш сайт (услуги)',
+                  html: data.data.ourServiceHTML,
+                  textPreview: data.data.ourServiceHTML.substring(0, 500),
+                  size: data.data.ourServiceHTML.length
+                });
+                
+                htmlDataArray.push({
+                  url: ourPriceUrl,
+                  name: 'Ваш сайт (цены)',
+                  html: data.data.ourPriceHTML,
+                  textPreview: data.data.ourPriceHTML.substring(0, 500),
+                  size: data.data.ourPriceHTML.length
+                });
+                
+                // Add competitors
+                Object.entries(data.data.competitorHTMLs).forEach(([name, html]) => {
+                  htmlDataArray.push({
+                    url: name,
+                    name: name,
+                    html: html as string,
+                    textPreview: (html as string).substring(0, 500),
+                    size: (html as string).length
+                  });
+                });
+                
+                setHtmlData(htmlDataArray);
+                setProgress('✅ Этап 1 завершен! HTML страницы скачаны. Проверьте их и переходите к Этапу 2.');
               } else if (data.type === 'result') {
-                console.log('[SSE] Result data:', data.data);
-                console.log('[SSE] Comparison length:', data.data?.comparison?.length);
+                console.log('[SSE] Final result data:', data.data);
                 setResult(data.data);
-                setProgress('Анализ завершен! Результаты готовы.');
+                setProgress('✅ Анализ завершен! Результаты готовы.');
+                setCurrentStage('input');
               } else if (data.type === 'error') {
                 throw new Error(data.message);
               }
@@ -151,14 +205,95 @@ export default function PriceComparator() {
         }
       }
 
-      // Не показываем "завершен" если нет результата
-      if (!result) {
-        setProgress('Анализ завершен, но результаты не получены. Проверьте логи браузера (F12 → Console).');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Произошла ошибка';
+      setError(errorMessage);
+      console.error('Error Stage 1:', err);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  // ЭТАП 2: Отправка в AI для анализа
+  const handleStage2 = async () => {
+    if (!stage1Data) {
+      setError('Сначала выполните Этап 1');
+      return;
+    }
+
+    if (!apiKey) {
+      setError('Укажите OpenAI/OpenRouter API ключ');
+      return;
+    }
+
+    setError(null);
+    setIsAnalyzing(true);
+    setCurrentStage('stage2');
+    setProgress('🤖 Этап 2: Отправка данных в AI модель...');
+
+    try {
+      const response = await fetch('/api/price-comparator/stage2', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          stage1Data,
+          apiKey,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Ошибка анализа');
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (!reader) {
+        throw new Error('Не удалось получить поток данных');
+      }
+
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const jsonString = line.slice(6);
+              console.log('[SSE Stage2] Received:', jsonString.substring(0, 200));
+              const data = JSON.parse(jsonString);
+              
+              console.log('[SSE Stage2] Parsed type:', data.type);
+              
+              if (data.type === 'progress') {
+                setProgress(data.message);
+              } else if (data.type === 'result') {
+                console.log('[SSE Stage2] Final result:', data.data);
+                setResult(data.data);
+                setProgress('✅ Анализ завершен! Результаты готовы.');
+              } else if (data.type === 'error') {
+                throw new Error(data.message);
+              }
+            } catch (e) {
+              console.error('Ошибка парсинга SSE Stage2:', e);
+              console.error('Проблемная строка:', line);
+            }
+          }
+        }
       }
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Произошла ошибка';
       setError(errorMessage);
-      console.error('Error:', err);
+      console.error('Error Stage 2:', err);
     } finally {
       setIsAnalyzing(false);
     }
@@ -290,21 +425,80 @@ export default function PriceComparator() {
           </button>
         </div>
 
-        {/* Analyze Button */}
-        <button
-          onClick={handleAnalyze}
-          disabled={isAnalyzing}
-          className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg mb-6"
-        >
-          {isAnalyzing ? (
-            <span className="flex items-center justify-center gap-2">
-              <Loader2 className="w-5 h-5 animate-spin" />
-              Анализируем...
-            </span>
-          ) : (
-            'Начать анализ'
-          )}
-        </button>
+        {/* Stage 1 Button */}
+        {currentStage === 'input' && (
+          <button
+            onClick={handleStage1}
+            disabled={isAnalyzing}
+            className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 text-white py-4 rounded-xl font-semibold hover:from-blue-700 hover:to-cyan-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg mb-6"
+          >
+            {isAnalyzing && currentStage === 'stage1' ? (
+              <span className="flex items-center justify-center gap-2">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Этап 1: Скачиваем HTML...
+              </span>
+            ) : (
+              '🌐 Этап 1: Скачать HTML страниц'
+            )}
+          </button>
+        )}
+
+        {/* Stage 1 Results */}
+        {htmlData.length > 0 && (
+          <div className="bg-white rounded-xl shadow-md p-6 mb-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+              ✅ Этап 1 завершен: HTML страницы скачаны
+            </h2>
+            
+            <div className="space-y-3 mb-6">
+              {htmlData.map((item, index) => (
+                <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="flex-1">
+                    <div className="font-medium text-gray-900">{item.name}</div>
+                    <div className="text-sm text-gray-600">{item.url}</div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      Размер: {(item.size / 1024).toFixed(1)} KB
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => downloadHTML(item.html, `${item.name.replace(/[^a-z0-9]/gi, '_')}.html`)}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                    >
+                      📄 Скачать HTML
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-4">
+              <p className="text-yellow-800 font-medium">
+                💡 Проверьте скачанные HTML файлы
+              </p>
+              <p className="text-yellow-700 text-sm mt-1">
+                Откройте файлы и убедитесь что на страницах есть цены. Если всё в порядке - переходите к Этапу 2.
+              </p>
+            </div>
+
+            <button
+              onClick={handleStage2}
+              disabled={isAnalyzing || !apiKey}
+              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-4 rounded-xl font-semibold hover:from-purple-700 hover:to-pink-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+            >
+              {isAnalyzing && currentStage === 'stage2' ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Этап 2: Отправляем в AI...
+                </span>
+              ) : !apiKey ? (
+                '⚠️ Укажите API ключ выше для продолжения'
+              ) : (
+                '🤖 Этап 2: Отправить данные в AI для анализа'
+              )}
+            </button>
+          </div>
+        )}
 
         {/* Progress */}
         {progress && (
