@@ -22,25 +22,23 @@ interface Stage1Result {
 interface RequestBody {
   stage1Data: Stage1Result;
   apiKey: string;
+  model?: string;
 }
 
 // Determine API endpoint and model based on key prefix
-function getAPIConfig(apiKey: string): { endpoint: string; model: string } {
+function getAPIConfig(apiKey: string, selectedModel?: string): { endpoint: string; model: string } {
+  const model = selectedModel || 'deepseek/deepseek-chat';
+  
   if (apiKey.startsWith('sk-or-')) {
     return {
       endpoint: 'https://openrouter.ai/api/v1/chat/completions',
-      model: 'deepseek/deepseek-chat' // Fast and cheap!
+      model: model
     };
   }
   return {
     endpoint: 'https://api.openai.com/v1/chat/completions',
     model: 'gpt-4o'
   };
-}
-
-// Legacy function for compatibility
-function getAPIEndpoint(apiKey: string): string {
-  return getAPIConfig(apiKey).endpoint;
 }
 
 export async function POST(request: NextRequest) {
@@ -50,7 +48,7 @@ export async function POST(request: NextRequest) {
     async start(controller) {
       try {
         const body: RequestBody = await request.json();
-        const { stage1Data, apiKey } = body;
+        const { stage1Data, apiKey, model } = body;
 
         // Helper functions
         const sendProgress = (message: string) => {
@@ -98,7 +96,8 @@ export async function POST(request: NextRequest) {
           ourServiceText,
           ourPriceText,
           apiKey,
-          'our_site'
+          'our_site',
+          model
         );
 
         console.log(`[Stage2] Our services found: ${ourServices.length}`);
@@ -119,7 +118,7 @@ export async function POST(request: NextRequest) {
           processed++;
           sendProgress(`Анализируем конкурента ${processed}/${Object.keys(competitorTexts).length}: ${name}...`);
           
-          const prices = await extractPrices(text, '', apiKey, name);
+          const prices = await extractPrices(text, '', apiKey, name, model);
           console.log(`[Stage2] Competitor ${name} services found: ${prices.length}`);
           competitorPrices.set(name, prices);
         }
@@ -168,7 +167,8 @@ async function extractPrices(
   text: string,
   additionalText: string,
   apiKey: string,
-  source: string
+  source: string,
+  selectedModel?: string
 ): Promise<ServicePrice[]> {
   const combinedText = additionalText ? `${text}\n\n${additionalText}` : text;
   
@@ -202,7 +202,7 @@ ${truncatedText}
 Если на странице нет цен или услуг, верни: {"services": []}`;
 
   try {
-    const config = getAPIConfig(apiKey);
+    const config = getAPIConfig(apiKey, selectedModel);
     console.log(`[extractPrices] Using ${config.model} at ${config.endpoint} for ${source}`);
     
     const requestBody: any = {

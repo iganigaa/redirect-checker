@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Loader2, Plus, X, BarChart3, AlertCircle } from 'lucide-react';
+import { Loader2, Plus, X, BarChart3, AlertCircle, Settings } from 'lucide-react';
+import { AVAILABLE_MODELS } from '@/lib/price-comparator/models';
 
 interface CompetitorUrl {
   id: string;
@@ -57,6 +58,9 @@ export default function PriceComparator() {
   const [error, setError] = useState<string | null>(null);
   const [apiKey, setApiKey] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
+  const [selectedModel, setSelectedModel] = useState('deepseek/deepseek-chat');
+  const [customModel, setCustomModel] = useState('');
+  const [showSettings, setShowSettings] = useState(false);
   
   // Stage management
   const [currentStage, setCurrentStage] = useState<'input' | 'stage1' | 'stage2' | 'stage3'>('input');
@@ -66,6 +70,8 @@ export default function PriceComparator() {
     competitors: Record<string, Array<{ service: string; price: string }>>;
   } | null>(null);
   const [htmlData, setHtmlData] = useState<HTMLData[]>([]);
+  
+  const activeModel = customModel.trim() || selectedModel;
 
   const addCompetitor = () => {
     setCompetitors([
@@ -245,6 +251,7 @@ export default function PriceComparator() {
         body: JSON.stringify({
           stage1Data,
           apiKey,
+          model: activeModel,
         }),
       });
 
@@ -330,6 +337,7 @@ export default function PriceComparator() {
         body: JSON.stringify({
           stage2Data,
           apiKey,
+          model: activeModel,
         }),
       });
 
@@ -404,15 +412,25 @@ export default function PriceComparator() {
 
         {/* API Key Section */}
         <div className="bg-white rounded-xl shadow-md p-6 mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-3">
-            OpenAI API Ключ
-          </h2>
-          <div className="flex gap-3">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold text-gray-900">
+              API Ключ и Настройки
+            </h2>
+            <button
+              onClick={() => setShowSettings(!showSettings)}
+              className="flex items-center gap-2 px-3 py-1 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded-lg"
+            >
+              <Settings className="w-4 h-4" />
+              {showSettings ? 'Скрыть' : 'Показать'}
+            </button>
+          </div>
+          
+          <div className="flex gap-3 mb-3">
             <input
               type={showApiKey ? 'text' : 'password'}
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
-              placeholder="sk-..."
+              placeholder="sk-or-v1-... (OpenRouter) или sk-... (OpenAI)"
               className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
             <button
@@ -422,7 +440,54 @@ export default function PriceComparator() {
               {showApiKey ? '🙈 Скрыть' : '👁️ Показать'}
             </button>
           </div>
-          <p className="text-xs text-gray-500 mt-2">
+
+          {showSettings && (
+            <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <h3 className="font-semibold text-gray-900 mb-3">⚙️ Выбор модели</h3>
+              
+              <div className="mb-3">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Модель AI (только для OpenRouter)
+                </label>
+                <select
+                  value={selectedModel}
+                  onChange={(e) => setSelectedModel(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={!apiKey.startsWith('sk-or-')}
+                >
+                  {AVAILABLE_MODELS.map((model) => (
+                    <option key={model.id} value={model.id}>
+                      {model.name}
+                    </option>
+                  ))}
+                </select>
+                {!apiKey.startsWith('sk-or-') && apiKey && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    OpenAI ключ обнаружен - будет использована модель GPT-4o
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Или укажите свою модель (опционально)
+                </label>
+                <input
+                  type="text"
+                  value={customModel}
+                  onChange={(e) => setCustomModel(e.target.value)}
+                  placeholder="Например: anthropic/claude-3-opus"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={!apiKey.startsWith('sk-or-')}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Активная модель: <span className="font-mono font-semibold">{activeModel}</span>
+                </p>
+              </div>
+            </div>
+          )}
+          
+          <p className="text-xs text-gray-500 mt-3">
             Получите ключ на{' '}
             <a
               href="https://openrouter.ai/keys"
@@ -432,7 +497,7 @@ export default function PriceComparator() {
             >
               OpenRouter
             </a>
-            {' '}(рекомендуется - использует DeepSeek, быстрее и дешевле) или{' '}
+            {' '}(рекомендуется - DeepSeek V3 быстрее и дешевле) или{' '}
             <a
               href="https://platform.openai.com/api-keys"
               target="_blank"

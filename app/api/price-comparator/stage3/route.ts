@@ -13,25 +13,23 @@ interface Stage2Result {
 interface RequestBody {
   stage2Data: Stage2Result;
   apiKey: string;
+  model?: string;
 }
 
 // Determine API endpoint and model based on key prefix
-function getAPIConfig(apiKey: string): { endpoint: string; model: string } {
+function getAPIConfig(apiKey: string, selectedModel?: string): { endpoint: string; model: string } {
+  const model = selectedModel || 'deepseek/deepseek-chat';
+  
   if (apiKey.startsWith('sk-or-')) {
     return {
       endpoint: 'https://openrouter.ai/api/v1/chat/completions',
-      model: 'deepseek/deepseek-chat' // Fast and cheap!
+      model: model
     };
   }
   return {
     endpoint: 'https://api.openai.com/v1/chat/completions',
     model: 'gpt-4o'
   };
-}
-
-// Legacy function for compatibility
-function getAPIEndpoint(apiKey: string): string {
-  return getAPIConfig(apiKey).endpoint;
 }
 
 export async function POST(request: NextRequest) {
@@ -41,7 +39,7 @@ export async function POST(request: NextRequest) {
     async start(controller) {
       try {
         const body: RequestBody = await request.json();
-        const { stage2Data, apiKey } = body;
+        const { stage2Data, apiKey, model } = body;
 
         const sendProgress = (message: string) => {
           const data = JSON.stringify({ type: 'progress', message });
@@ -68,7 +66,8 @@ export async function POST(request: NextRequest) {
         const comparison = await matchServices(
           stage2Data.ourServices,
           stage2Data.competitors,
-          apiKey
+          apiKey,
+          model
         );
 
         console.log(`[Stage3] Comparison created: ${comparison.length} rows`);
@@ -106,7 +105,8 @@ export async function POST(request: NextRequest) {
 async function matchServices(
   ourServices: ServicePrice[],
   competitors: Record<string, ServicePrice[]>,
-  apiKey: string
+  apiKey: string,
+  selectedModel?: string
 ): Promise<Array<{
   service: string;
   ourPrice: string;
@@ -145,7 +145,7 @@ ${JSON.stringify(competitors, null, 2)}
 В comparison должны быть ВСЕ наши услуги из списка. Для каждого конкурента укажи цену только если услуга точно совпадает.`;
 
   try {
-    const config = getAPIConfig(apiKey);
+    const config = getAPIConfig(apiKey, selectedModel);
     console.log(`[matchServices] Using ${config.model} at ${config.endpoint}`);
     
     const requestBody: any = {
