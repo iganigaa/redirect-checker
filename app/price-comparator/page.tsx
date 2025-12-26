@@ -242,7 +242,13 @@ export default function PriceComparator() {
     setStage2Data(null);
     setProgress('🤖 Этап 2: Извлекаем цены с помощью AI...');
 
+    console.log('[Stage2] Starting with model:', activeModel);
+    console.log('[Stage2] API key prefix:', apiKey.substring(0, 8));
+
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 min timeout
+
       const response = await fetch('/api/price-comparator/stage2', {
         method: 'POST',
         headers: {
@@ -253,7 +259,10 @@ export default function PriceComparator() {
           apiKey,
           model: activeModel,
         }),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -268,10 +277,21 @@ export default function PriceComparator() {
       }
 
       let buffer = '';
+      let messagesReceived = 0;
+      let lastProgressTime = Date.now();
+
+      console.log('[Stage2] SSE stream started');
 
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
+        
+        if (done) {
+          console.log('[Stage2] SSE stream ended. Total messages:', messagesReceived);
+          if (messagesReceived === 0) {
+            throw new Error('Сервер не отправил данные. Проверьте API ключ и модель.');
+          }
+          break;
+        }
 
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
@@ -279,33 +299,57 @@ export default function PriceComparator() {
 
         for (const line of lines) {
           if (line.startsWith('data: ')) {
+            messagesReceived++;
+            lastProgressTime = Date.now();
+            
             try {
               const jsonString = line.slice(6);
-              console.log('[SSE Stage2] Received:', jsonString.substring(0, 200));
+              console.log(`[SSE Stage2 #${messagesReceived}]`, jsonString.substring(0, 150));
               const data = JSON.parse(jsonString);
               
-              console.log('[SSE Stage2] Parsed type:', data.type);
+              console.log('[SSE Stage2] Type:', data.type);
               
               if (data.type === 'progress') {
+                console.log('[SSE Stage2] Progress update:', data.message);
                 setProgress(data.message);
               } else if (data.type === 'stage2_complete') {
-                console.log('[SSE Stage2] Prices extracted:', data.data);
+                console.log('[SSE Stage2] ✅ Complete! Services count:', 
+                  Object.keys(data.data?.competitors || {}).length);
                 setStage2Data(data.data);
                 setProgress('✅ Этап 2 завершен! Цены извлечены. Проверьте таблицы и переходите к Этапу 3.');
               } else if (data.type === 'error') {
+                console.error('[SSE Stage2] Server error:', data.message);
                 throw new Error(data.message);
+              } else {
+                console.warn('[SSE Stage2] Unknown type:', data.type);
               }
             } catch (e) {
-              console.error('Ошибка парсинга SSE Stage2:', e);
-              console.error('Проблемная строка:', line);
+              console.error('[SSE Stage2] Parse error:', e);
+              console.error('[SSE Stage2] Bad line:', line);
             }
           }
         }
+        
+        // Stall detection
+        const stallTime = Date.now() - lastProgressTime;
+        if (stallTime > 30000 && messagesReceived > 0) { // 30s without progress
+          console.warn(`[Stage2] Stalled for ${Math.floor(stallTime/1000)}s`);
+          setProgress(`⏳ AI думает... (${Math.floor(stallTime/1000)}s, получено сообщений: ${messagesReceived})`);
+        }
       }
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Произошла ошибка';
+      let errorMessage = 'Произошла ошибка';
+      
+      if (err instanceof Error) {
+        if (err.name === 'AbortError') {
+          errorMessage = '⏱️ Превышено время ожидания (5 минут). Попробуйте: 1) Меньше конкурентов 2) Более быструю модель (Gemini/DeepSeek)';
+        } else {
+          errorMessage = err.message;
+        }
+      }
+      
       setError(errorMessage);
-      console.error('Error Stage 2:', err);
+      console.error('[Stage2] Fatal error:', err);
     } finally {
       setIsAnalyzing(false);
     }

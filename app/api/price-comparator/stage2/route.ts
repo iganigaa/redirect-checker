@@ -231,22 +231,43 @@ ${truncatedText}
       headers['X-Title'] = 'Price Comparator';
     }
     
+    console.log(`[extractPrices] Sending request to ${config.endpoint}...`);
+    const startTime = Date.now();
+    
+    // Add timeout to fetch
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      console.error(`[extractPrices] Timeout after 120s for ${source}`);
+      controller.abort();
+    }, 120000); // 2 minutes timeout per request
+    
     const response = await fetch(config.endpoint, {
       method: 'POST',
       headers,
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify(requestBody),
+      signal: controller.signal
     });
 
+    clearTimeout(timeoutId);
+    console.log(`[extractPrices] Response received in ${Date.now() - startTime}ms, status: ${response.status}`);
+
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(`API error: ${error.error?.message || response.statusText}`);
+      const error = await response.json().catch(() => ({}));
+      const errorMsg = error.error?.message || response.statusText || `HTTP ${response.status}`;
+      console.error(`[extractPrices] API error for ${source}:`, errorMsg);
+      throw new Error(`API error: ${errorMsg}`);
     }
 
     const data = await response.json();
-    const content = data.choices[0].message.content;
+    console.log(`[extractPrices] JSON parsed for ${source}`);
+    
+    const content = data.choices?.[0]?.message?.content;
+    if (!content) {
+      console.error(`[extractPrices] No content in response for ${source}`, data);
+      throw new Error('No content in API response');
+    }
     
     const parsed = JSON.parse(content);
-    
     console.log(`[extractPrices] ${source}: found ${parsed.services?.length || 0} services`);
     
     if (parsed.services && Array.isArray(parsed.services)) {
@@ -255,8 +276,13 @@ ${truncatedText}
     
     return [];
   } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      console.error(`[extractPrices] Timeout for ${source} - AI model is too slow or stuck`);
+      throw new Error(`Таймаут для ${source}. Попробуйте более быструю модель (DeepSeek или Gemini).`);
+    }
     console.error(`[extractPrices] Error for ${source}:`, error);
-    return [];
+    // Don't return empty array - throw to stop the whole process
+    throw error;
   }
 }
 
