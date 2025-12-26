@@ -19,6 +19,15 @@ interface AnalysisResult {
   ourServices: Array<{ service: string; price: string }>;
   competitors: Record<string, Array<{ service: string; price: string }>>;
   comparison: ServicePrice[];
+  debug?: {
+    competitorHTMLs: Record<string, string>;
+    competitorTexts: Record<string, string>;
+    competitorDebugInfo: Record<string, {
+      htmlSize: number;
+      textSize: number;
+      textPreview: string;
+    }>;
+  };
 }
 
 export default function PriceComparator() {
@@ -321,6 +330,53 @@ export default function PriceComparator() {
               Результаты сравнения
             </h2>
 
+            {/* Debug Info Section */}
+            {result.debug && (
+              <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                  🔍 Отладочная информация
+                </h3>
+                <div className="space-y-3">
+                  {Object.entries(result.debug.competitorDebugInfo).map(([name, info]) => (
+                    <div key={name} className="flex flex-wrap items-center gap-3 p-3 bg-white rounded border border-gray-200">
+                      <div className="flex-1 min-w-[200px]">
+                        <div className="font-medium text-gray-900">{name}</div>
+                        <div className="text-sm text-gray-600">
+                          HTML: {(info.htmlSize / 1024).toFixed(1)} KB | 
+                          Текст: {(info.textSize / 1024).toFixed(1)} KB
+                        </div>
+                        <details className="mt-2">
+                          <summary className="text-xs text-blue-600 cursor-pointer hover:underline">
+                            Показать превью текста
+                          </summary>
+                          <pre className="mt-2 text-xs bg-gray-100 p-2 rounded overflow-x-auto max-h-32">
+                            {info.textPreview}...
+                          </pre>
+                        </details>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => downloadHTML(result.debug!.competitorHTMLs[name], `${name.replace(/[^a-z0-9]/gi, '_')}.html`)}
+                          className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                        >
+                          📄 HTML
+                        </button>
+                        <button
+                          onClick={() => downloadText(result.debug!.competitorTexts[name], `${name.replace(/[^a-z0-9]/gi, '_')}.txt`)}
+                          className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                        >
+                          📝 Текст
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-3 text-xs text-gray-500">
+                  💡 Скачайте HTML/Текст для проверки того, что было отправлено в AI для анализа
+                </p>
+              </div>
+            )}
+
             <div className="overflow-x-auto">
               <table className="w-full border-collapse">
                 <thead>
@@ -401,6 +457,22 @@ function generateCSV(result: AnalysisResult): string {
 
 function downloadCSV(csv: string, filename: string) {
   const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  link.click();
+}
+
+function downloadHTML(html: string, filename: string) {
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  link.click();
+}
+
+function downloadText(text: string, filename: string) {
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8;' });
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
   link.download = filename;

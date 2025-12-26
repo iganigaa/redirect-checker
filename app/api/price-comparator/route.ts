@@ -101,9 +101,24 @@ export async function POST(request: NextRequest) {
         const ourServiceText = cleanHTML(ourServiceHTML);
         const ourPriceText = cleanHTML(ourPriceHTML);
         const competitorTexts = new Map<string, string>();
+        const competitorDebugInfo = new Map<string, { htmlSize: number, textSize: number, textPreview: string }>();
+        
+        console.log(`[Main] Our service text length: ${ourServiceText.length}`);
+        console.log(`[Main] Our price text length: ${ourPriceText.length}`);
         
         for (const [name, html] of competitorHTMLs.entries()) {
-          competitorTexts.set(name, cleanHTML(html));
+          const cleanedText = cleanHTML(html);
+          competitorTexts.set(name, cleanedText);
+          
+          // Save debug info
+          competitorDebugInfo.set(name, {
+            htmlSize: html.length,
+            textSize: cleanedText.length,
+            textPreview: cleanedText.substring(0, 500)
+          });
+          
+          console.log(`[Main] Competitor ${name}: HTML=${html.length} chars, Text=${cleanedText.length} chars`);
+          console.log(`[Main] Preview: ${cleanedText.substring(0, 200)}...`);
         }
 
         // Step 3: Extract prices from our site using LLM
@@ -150,11 +165,16 @@ export async function POST(request: NextRequest) {
 
         console.log(`[Main] Comparison rows: ${comparison.length}`);
 
-        // Send final result
+        // Send final result with debug info
         const resultData = {
           ourServices,
           competitors: Object.fromEntries(competitorPrices),
-          comparison
+          comparison,
+          debug: {
+            competitorHTMLs: Object.fromEntries(competitorHTMLs),
+            competitorTexts: Object.fromEntries(competitorTexts),
+            competitorDebugInfo: Object.fromEntries(competitorDebugInfo)
+          }
         };
         
         console.log(`[Main] Sending result:`, JSON.stringify({
