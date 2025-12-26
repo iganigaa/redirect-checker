@@ -732,3 +732,4 @@ await db.priceComparisons.create({
 **Документация актуальна:** Декабрь 2025  
 **API Version:** 1.0.0
 
+

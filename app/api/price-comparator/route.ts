@@ -187,7 +187,15 @@ export async function POST(request: NextRequest) {
   });
 }
 
-// Extract prices from text using OpenAI
+// Determine API endpoint based on key prefix
+function getAPIEndpoint(apiKey: string): string {
+  if (apiKey.startsWith('sk-or-')) {
+    return 'https://openrouter.ai/api/v1/chat/completions';
+  }
+  return 'https://api.openai.com/v1/chat/completions';
+}
+
+// Extract prices from text using OpenAI or OpenRouter
 async function extractPrices(
   text: string,
   additionalText: string,
@@ -227,27 +235,40 @@ ${truncatedText}
 Если на странице нет цен или услуг, верни: {"services": []}`;
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const apiEndpoint = getAPIEndpoint(apiKey);
+    console.log(`[extractPrices] Using API: ${apiEndpoint}`);
+    
+    const requestBody: any = {
+      model: apiKey.startsWith('sk-or-') ? 'openai/gpt-4o' : 'gpt-4o',
+      messages: [
+        {
+          role: 'system',
+          content: 'Ты эксперт по извлечению ценовой информации из текста. Возвращай только валидный JSON без дополнительных объяснений.'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      temperature: 0.1,
+      response_format: { type: 'json_object' }
+    };
+    
+    // OpenRouter specific headers
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    };
+    
+    if (apiKey.startsWith('sk-or-')) {
+      headers['HTTP-Referer'] = 'https://i-burdukov.ru';
+      headers['X-Title'] = 'Price Comparator';
+    }
+    
+    const response = await fetch(apiEndpoint, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: [
-          {
-            role: 'system',
-            content: 'Ты эксперт по извлечению ценовой информации из текста. Возвращай только валидный JSON без дополнительных объяснений.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.1,
-        response_format: { type: 'json_object' }
-      })
+      headers,
+      body: JSON.stringify(requestBody)
     });
 
     if (!response.ok) {
@@ -331,27 +352,39 @@ ${JSON.stringify(competitorsData, null, 2)}
 В comparison должны быть ВСЕ наши услуги из списка. Для каждого конкурента укажи цену только если услуга точно совпадает.`;
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const apiEndpoint = getAPIEndpoint(apiKey);
+    console.log(`[matchServices] Using API: ${apiEndpoint}`);
+    
+    const requestBody: any = {
+      model: apiKey.startsWith('sk-or-') ? 'openai/gpt-4o' : 'gpt-4o',
+      messages: [
+        {
+          role: 'system',
+          content: 'Ты эксперт по сопоставлению услуг. Будь очень точным и консервативным. Возвращай только валидный JSON.'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      temperature: 0.1,
+      response_format: { type: 'json_object' }
+    };
+    
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    };
+    
+    if (apiKey.startsWith('sk-or-')) {
+      headers['HTTP-Referer'] = 'https://i-burdukov.ru';
+      headers['X-Title'] = 'Price Comparator';
+    }
+    
+    const response = await fetch(apiEndpoint, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: [
-          {
-            role: 'system',
-            content: 'Ты эксперт по сопоставлению услуг. Будь очень точным и консервативным. Возвращай только валидный JSON.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.1,
-        response_format: { type: 'json_object' }
-      })
+      headers,
+      body: JSON.stringify(requestBody)
     });
 
     if (!response.ok) {

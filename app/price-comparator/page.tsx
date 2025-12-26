@@ -118,23 +118,34 @@ export default function PriceComparator() {
         for (const line of lines) {
           if (line.startsWith('data: ')) {
             try {
-              const data = JSON.parse(line.slice(6));
+              const jsonString = line.slice(6);
+              console.log('[SSE] Received:', jsonString.substring(0, 200));
+              const data = JSON.parse(jsonString);
+              
+              console.log('[SSE] Parsed type:', data.type);
               
               if (data.type === 'progress') {
                 setProgress(data.message);
               } else if (data.type === 'result') {
+                console.log('[SSE] Result data:', data.data);
+                console.log('[SSE] Comparison length:', data.data?.comparison?.length);
                 setResult(data.data);
+                setProgress('Анализ завершен! Результаты готовы.');
               } else if (data.type === 'error') {
                 throw new Error(data.message);
               }
             } catch (e) {
               console.error('Ошибка парсинга SSE:', e);
+              console.error('Проблемная строка:', line);
             }
           }
         }
       }
 
-      setProgress('Анализ завершен!');
+      // Не показываем "завершен" если нет результата
+      if (!result) {
+        setProgress('Анализ завершен, но результаты не получены. Проверьте логи браузера (F12 → Console).');
+      }
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Произошла ошибка';
       setError(errorMessage);
@@ -395,4 +406,5 @@ function downloadCSV(csv: string, filename: string) {
   link.download = filename;
   link.click();
 }
+
 
