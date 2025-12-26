@@ -513,13 +513,13 @@ export default function PriceComparator() {
         </div>
 
         {/* Stage 1 Button */}
-        {currentStage === 'input' && (
+        {(currentStage === 'input' || currentStage === 'stage1') && !stage1Data && (
           <button
             onClick={handleStage1}
             disabled={isAnalyzing}
             className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 text-white py-4 rounded-xl font-semibold hover:from-blue-700 hover:to-cyan-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg mb-6"
           >
-            {isAnalyzing && currentStage === 'stage1' ? (
+            {isAnalyzing ? (
               <span className="flex items-center justify-center gap-2">
                 <Loader2 className="w-5 h-5 animate-spin" />
                 Этап 1: Скачиваем HTML...
@@ -573,7 +573,7 @@ export default function PriceComparator() {
               disabled={isAnalyzing || !apiKey}
               className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-4 rounded-xl font-semibold hover:from-purple-700 hover:to-pink-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
             >
-              {isAnalyzing && currentStage === 'stage2' ? (
+              {isAnalyzing ? (
                 <span className="flex items-center justify-center gap-2">
                   <Loader2 className="w-5 h-5 animate-spin" />
                   Этап 2: Извлекаем цены...
@@ -666,7 +666,7 @@ export default function PriceComparator() {
               disabled={isAnalyzing}
               className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-4 rounded-xl font-semibold hover:from-green-700 hover:to-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
             >
-              {isAnalyzing && currentStage === 'stage3' ? (
+              {isAnalyzing ? (
                 <span className="flex items-center justify-center gap-2">
                   <Loader2 className="w-5 h-5 animate-spin" />
                   Этап 3: Сопоставляем услуги...
