@@ -24,12 +24,23 @@ interface RequestBody {
   apiKey: string;
 }
 
-// Determine API endpoint based on key prefix
-function getAPIEndpoint(apiKey: string): string {
+// Determine API endpoint and model based on key prefix
+function getAPIConfig(apiKey: string): { endpoint: string; model: string } {
   if (apiKey.startsWith('sk-or-')) {
-    return 'https://openrouter.ai/api/v1/chat/completions';
+    return {
+      endpoint: 'https://openrouter.ai/api/v1/chat/completions',
+      model: 'deepseek/deepseek-chat' // Fast and cheap!
+    };
   }
-  return 'https://api.openai.com/v1/chat/completions';
+  return {
+    endpoint: 'https://api.openai.com/v1/chat/completions',
+    model: 'gpt-4o'
+  };
+}
+
+// Legacy function for compatibility
+function getAPIEndpoint(apiKey: string): string {
+  return getAPIConfig(apiKey).endpoint;
 }
 
 export async function POST(request: NextRequest) {
@@ -191,11 +202,11 @@ ${truncatedText}
 Если на странице нет цен или услуг, верни: {"services": []}`;
 
   try {
-    const apiEndpoint = getAPIEndpoint(apiKey);
-    console.log(`[extractPrices] Using API: ${apiEndpoint} for ${source}`);
+    const config = getAPIConfig(apiKey);
+    console.log(`[extractPrices] Using ${config.model} at ${config.endpoint} for ${source}`);
     
     const requestBody: any = {
-      model: apiKey.startsWith('sk-or-') ? 'openai/gpt-4o' : 'gpt-4o',
+      model: config.model,
       messages: [
         {
           role: 'system',
@@ -220,7 +231,7 @@ ${truncatedText}
       headers['X-Title'] = 'Price Comparator';
     }
     
-    const response = await fetch(apiEndpoint, {
+    const response = await fetch(config.endpoint, {
       method: 'POST',
       headers,
       body: JSON.stringify(requestBody)

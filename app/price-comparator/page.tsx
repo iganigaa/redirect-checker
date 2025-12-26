@@ -425,12 +425,21 @@ export default function PriceComparator() {
           <p className="text-xs text-gray-500 mt-2">
             Получите ключ на{' '}
             <a
+              href="https://openrouter.ai/keys"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:underline"
+            >
+              OpenRouter
+            </a>
+            {' '}(рекомендуется - использует DeepSeek, быстрее и дешевле) или{' '}
+            <a
               href="https://platform.openai.com/api-keys"
               target="_blank"
               rel="noopener noreferrer"
               className="text-blue-600 hover:underline"
             >
-              platform.openai.com
+              OpenAI
             </a>
             . Ключ не сохраняется на сервере.
           </p>
