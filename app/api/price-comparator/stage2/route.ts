@@ -113,23 +113,22 @@ export async function POST(request: NextRequest) {
           competitorPrices.set(name, prices);
         }
 
-        // Match services
-        sendProgress('Сопоставляем услуги...');
+        // Send extracted prices (without matching)
+        sendProgress('Цены извлечены! Проверьте результаты.');
         
-        const comparison = await matchServices(
+        const stage2Result = {
           ourServices,
-          competitorPrices,
-          apiKey
-        );
-
-        console.log(`[Stage2] Comparison rows: ${comparison.length}`);
-
-        // Send result
-        sendResult({
-          ourServices,
-          competitors: Object.fromEntries(competitorPrices),
-          comparison
-        });
+          competitors: Object.fromEntries(competitorPrices)
+        };
+        
+        console.log(`[Stage2] Sending extracted prices:`, JSON.stringify({
+          ourServicesCount: ourServices.length,
+          competitorsCount: Object.keys(stage2Result.competitors).length
+        }));
+        
+        // Send as stage2_complete
+        const data = JSON.stringify({ type: 'stage2_complete', data: stage2Result });
+        controller.enqueue(encoder.encode(`data: ${data}\n\n`));
 
         controller.close();
       } catch (error) {
@@ -250,105 +249,4 @@ ${truncatedText}
   }
 }
 
-// Match services
-async function matchServices(
-  ourServices: ServicePrice[],
-  competitorPrices: Map<string, ServicePrice[]>,
-  apiKey: string
-): Promise<Array<{
-  service: string;
-  ourPrice: string;
-  competitorPrices: Record<string, string>;
-}>> {
-  const competitorsData = Object.fromEntries(competitorPrices);
-  
-  const prompt = `У нас есть список наших услуг и цены конкурентов. Твоя задача - сопоставить услуги конкурентов с нашими услугами.
-
-КРИТИЧЕСКИ ВАЖНО:
-1. Сопоставляй ТОЛЬКО идентичные или очень похожие услуги
-2. Если услуги отличаются параметрами (площадь, количество комнат, время и т.д.), НЕ сопоставляй их
-3. Будь консервативен - лучше оставить пустым, чем сопоставить неправильно
-
-Наши услуги:
-${JSON.stringify(ourServices, null, 2)}
-
-Конкуренты:
-${JSON.stringify(competitorsData, null, 2)}
-
-Верни результат СТРОГО в формате JSON:
-{
-  "comparison": [
-    {
-      "service": "Название нашей услуги из списка выше",
-      "ourPrice": "Наша цена",
-      "competitorPrices": {
-        "Конкурент 1": "Цена или пустая строка если нет совпадения",
-        "Конкурент 2": "Цена или пустая строка если нет совпадения"
-      }
-    }
-  ]
-}
-
-В comparison должны быть ВСЕ наши услуги из списка. Для каждого конкурента укажи цену только если услуга точно совпадает.`;
-
-  try {
-    const apiEndpoint = getAPIEndpoint(apiKey);
-    
-    const requestBody: any = {
-      model: apiKey.startsWith('sk-or-') ? 'openai/gpt-4o' : 'gpt-4o',
-      messages: [
-        {
-          role: 'system',
-          content: 'Ты эксперт по сопоставлению услуг. Будь очень точным и консервативным. Возвращай только валидный JSON.'
-        },
-        {
-          role: 'user',
-          content: prompt
-        }
-      ],
-      temperature: 0.1,
-      response_format: { type: 'json_object' }
-    };
-    
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
-    };
-    
-    if (apiKey.startsWith('sk-or-')) {
-      headers['HTTP-Referer'] = 'https://i-burdukov.ru';
-      headers['X-Title'] = 'Price Comparator';
-    }
-    
-    const response = await fetch(apiEndpoint, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(requestBody)
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(`API error: ${error.error?.message || response.statusText}`);
-    }
-
-    const data = await response.json();
-    const content = data.choices[0].message.content;
-    const parsed = JSON.parse(content);
-    
-    console.log(`[matchServices] Comparison items: ${parsed.comparison?.length || 0}`);
-    
-    return parsed.comparison || [];
-  } catch (error) {
-    console.error('[matchServices] Error:', error);
-    
-    // Fallback
-    return ourServices.map(service => ({
-      service: service.service,
-      ourPrice: service.price,
-      competitorPrices: Object.fromEntries(
-        Array.from(competitorPrices.keys()).map(name => [name, ''])
-      )
-    }));
-  }
-}
 

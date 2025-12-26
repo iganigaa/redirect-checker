@@ -59,8 +59,12 @@ export default function PriceComparator() {
   const [showApiKey, setShowApiKey] = useState(false);
   
   // Stage management
-  const [currentStage, setCurrentStage] = useState<'input' | 'stage1' | 'stage2'>('input');
+  const [currentStage, setCurrentStage] = useState<'input' | 'stage1' | 'stage2' | 'stage3'>('input');
   const [stage1Data, setStage1Data] = useState<Stage1Result | null>(null);
+  const [stage2Data, setStage2Data] = useState<{
+    ourServices: Array<{ service: string; price: string }>;
+    competitors: Record<string, Array<{ service: string; price: string }>>;
+  } | null>(null);
   const [htmlData, setHtmlData] = useState<HTMLData[]>([]);
 
   const addCompetitor = () => {
@@ -214,7 +218,7 @@ export default function PriceComparator() {
     }
   };
 
-  // ЭТАП 2: Отправка в AI для анализа
+  // ЭТАП 2: Извлечение цен из HTML каждого конкурента
   const handleStage2 = async () => {
     if (!stage1Data) {
       setError('Сначала выполните Этап 1');
@@ -229,7 +233,8 @@ export default function PriceComparator() {
     setError(null);
     setIsAnalyzing(true);
     setCurrentStage('stage2');
-    setProgress('🤖 Этап 2: Отправка данных в AI модель...');
+    setStage2Data(null);
+    setProgress('🤖 Этап 2: Извлекаем цены с помощью AI...');
 
     try {
       const response = await fetch('/api/price-comparator/stage2', {
@@ -276,10 +281,10 @@ export default function PriceComparator() {
               
               if (data.type === 'progress') {
                 setProgress(data.message);
-              } else if (data.type === 'result') {
-                console.log('[SSE Stage2] Final result:', data.data);
-                setResult(data.data);
-                setProgress('✅ Анализ завершен! Результаты готовы.');
+              } else if (data.type === 'stage2_complete') {
+                console.log('[SSE Stage2] Prices extracted:', data.data);
+                setStage2Data(data.data);
+                setProgress('✅ Этап 2 завершен! Цены извлечены. Проверьте таблицы и переходите к Этапу 3.');
               } else if (data.type === 'error') {
                 throw new Error(data.message);
               }
@@ -294,6 +299,88 @@ export default function PriceComparator() {
       const errorMessage = err instanceof Error ? err.message : 'Произошла ошибка';
       setError(errorMessage);
       console.error('Error Stage 2:', err);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  // ЭТАП 3: Сопоставление услуг и создание итоговой таблицы
+  const handleStage3 = async () => {
+    if (!stage2Data) {
+      setError('Сначала выполните Этап 2');
+      return;
+    }
+
+    if (!apiKey) {
+      setError('Укажите OpenAI/OpenRouter API ключ');
+      return;
+    }
+
+    setError(null);
+    setIsAnalyzing(true);
+    setCurrentStage('stage3');
+    setProgress('🔗 Этап 3: Сопоставляем услуги...');
+
+    try {
+      const response = await fetch('/api/price-comparator/stage3', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          stage2Data,
+          apiKey,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Ошибка сопоставления');
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (!reader) {
+        throw new Error('Не удалось получить поток данных');
+      }
+
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const jsonString = line.slice(6);
+              console.log('[SSE Stage3] Received:', jsonString.substring(0, 200));
+              const data = JSON.parse(jsonString);
+              
+              if (data.type === 'progress') {
+                setProgress(data.message);
+              } else if (data.type === 'result') {
+                console.log('[SSE Stage3] Final comparison:', data.data);
+                setResult(data.data);
+                setProgress('✅ Анализ завершен! Итоговая таблица готова.');
+              } else if (data.type === 'error') {
+                throw new Error(data.message);
+              }
+            } catch (e) {
+              console.error('Ошибка парсинга SSE Stage3:', e);
+            }
+          }
+        }
+      }
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Произошла ошибка';
+      setError(errorMessage);
+      console.error('Error Stage 3:', err);
     } finally {
       setIsAnalyzing(false);
     }
@@ -489,12 +576,103 @@ export default function PriceComparator() {
               {isAnalyzing && currentStage === 'stage2' ? (
                 <span className="flex items-center justify-center gap-2">
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  Этап 2: Отправляем в AI...
+                  Этап 2: Извлекаем цены...
                 </span>
               ) : !apiKey ? (
                 '⚠️ Укажите API ключ выше для продолжения'
               ) : (
-                '🤖 Этап 2: Отправить данные в AI для анализа'
+                '🤖 Этап 2: Извлечь цены из HTML (AI)'
+              )}
+            </button>
+          </div>
+        )}
+
+        {/* Stage 2 Results - Extracted Prices */}
+        {stage2Data && (
+          <div className="bg-white rounded-xl shadow-md p-6 mb-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+              ✅ Этап 2 завершен: Цены извлечены
+            </h2>
+
+            {/* Our Services */}
+            <div className="mb-6">
+              <h3 className="text-xl font-semibold text-blue-600 mb-3">
+                📋 Ваши услуги ({stage2Data.ourServices.length})
+              </h3>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="bg-blue-50">
+                      <th className="border border-gray-300 px-4 py-2 text-left font-semibold">Услуга</th>
+                      <th className="border border-gray-300 px-4 py-2 text-left font-semibold">Цена</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stage2Data.ourServices.map((item, index) => (
+                      <tr key={index} className="hover:bg-gray-50">
+                        <td className="border border-gray-300 px-4 py-2">{item.service}</td>
+                        <td className="border border-gray-300 px-4 py-2 font-semibold">{item.price}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Competitors */}
+            {Object.entries(stage2Data.competitors).map(([name, services]) => (
+              <div key={name} className="mb-6">
+                <h3 className="text-xl font-semibold text-gray-700 mb-3">
+                  🏢 {name} ({services.length} услуг{services.length === 0 ? ' не найдено' : ''})
+                </h3>
+                {services.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="bg-gray-50">
+                          <th className="border border-gray-300 px-4 py-2 text-left font-semibold">Услуга</th>
+                          <th className="border border-gray-300 px-4 py-2 text-left font-semibold">Цена</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {services.map((item, index) => (
+                          <tr key={index} className="hover:bg-gray-50">
+                            <td className="border border-gray-300 px-4 py-2">{item.service}</td>
+                            <td className="border border-gray-300 px-4 py-2 font-semibold">{item.price}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-red-700">❌ Цены не найдены на этой странице. Проверьте HTML файл из Этапа 1.</p>
+                  </div>
+                )}
+              </div>
+            ))}
+
+            <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-4">
+              <p className="text-yellow-800 font-medium">
+                💡 Проверьте извлеченные цены
+              </p>
+              <p className="text-yellow-700 text-sm mt-1">
+                Убедитесь что AI правильно распознал услуги и цены. Если всё верно - переходите к Этапу 3 для сопоставления.
+              </p>
+            </div>
+
+            <button
+              onClick={handleStage3}
+              disabled={isAnalyzing}
+              className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-4 rounded-xl font-semibold hover:from-green-700 hover:to-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+            >
+              {isAnalyzing && currentStage === 'stage3' ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Этап 3: Сопоставляем услуги...
+                </span>
+              ) : (
+                '🔗 Этап 3: Сопоставить услуги и создать итоговую таблицу'
               )}
             </button>
           </div>
