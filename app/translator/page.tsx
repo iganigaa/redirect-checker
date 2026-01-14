@@ -1,54 +1,158 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Languages, Copy, Trash2, Home as HomeIcon, ChevronRight, Loader2, Sparkles, Settings, Key, Zap } from 'lucide-react';
+import { 
+  Languages, 
+  Copy, 
+  Trash2, 
+  Home as HomeIcon, 
+  ChevronRight, 
+  Loader2, 
+  Sparkles, 
+  Settings, 
+  Key,
+  AlertCircle,
+  CheckCircle2
+} from 'lucide-react';
 import Link from 'next/link';
 import { AVAILABLE_MODELS, DEFAULT_MODEL_ID } from '@/lib/translator/models';
 
-interface Stats {
-  originalLength: number;
-  translatedLength: number;
-  chunksCount: number;
-  estimatedTokens: number;
-  processingTime: number;
+interface TranslationState {
+  status: 'idle' | 'translating' | 'completed' | 'error';
+  progress: number;
+  currentChunk: number;
+  totalChunks: number;
+  error?: string;
+}
+
+// Прямое обращение к OpenRouter API (как в референсе)
+const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
+
+// Чанкирование (из референса)
+function splitTextIntoChunks(text: string, maxChunkSize: number = 2500): string[] {
+  if (!text) return [];
+  if (text.length <= maxChunkSize) return [text];
+
+  const chunks: string[] = [];
+  const paragraphs = text.split(/\n\n+/);
+  let currentChunk = "";
+
+  for (const paragraph of paragraphs) {
+    if (currentChunk.length + paragraph.length + 2 > maxChunkSize) {
+      if (currentChunk.length > 0) {
+        chunks.push(currentChunk.trim());
+        currentChunk = "";
+      }
+
+      if (paragraph.length > maxChunkSize) {
+        const sentences = paragraph.match(/[^.!?]+[.!?]+(\s+|$)/g) || [paragraph];
+        for (const sentence of sentences) {
+          if (currentChunk.length + sentence.length > maxChunkSize) {
+            if (currentChunk.length > 0) chunks.push(currentChunk.trim());
+            currentChunk = sentence;
+          } else {
+            currentChunk += sentence;
+          }
+        }
+      } else {
+        currentChunk = paragraph;
+      }
+    } else {
+      currentChunk += (currentChunk.length > 0 ? "\n\n" : "") + paragraph;
+    }
+  }
+
+  if (currentChunk.trim().length > 0) {
+    chunks.push(currentChunk.trim());
+  }
+
+  return chunks;
+}
+
+// Перевод одного чанка (из референса)
+async function translateChunk(
+  text: string,
+  modelId: string,
+  apiKey: string,
+  fromLang: string,
+  toLang: string,
+  onRetry: (attempt: number) => void
+): Promise<string> {
+  let attempt = 0;
+  const maxRetries = 3;
+
+  while (attempt < maxRetries) {
+    try {
+      const response = await fetch(OPENROUTER_URL, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'HTTP-Referer': 'https://igorburdukov.me',
+          'X-Title': 'AI Translator',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: modelId,
+          messages: [
+            {
+              role: 'system',
+              content: `You are a professional translator. Translate the following text from ${fromLang} to ${toLang}. Do not summarize. Do not explain. Return ONLY the translated text. Preserve the original formatting and paragraph structure exactly.`
+            },
+            {
+              role: 'user',
+              content: text
+            }
+          ],
+          temperature: 0.3,
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData?.error?.message || `API Error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.choices?.[0]?.message?.content || "";
+    } catch (error) {
+      attempt++;
+      onRetry(attempt);
+      if (attempt >= maxRetries) throw error;
+      await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
+    }
+  }
+  return "";
 }
 
 export default function TranslatorPage() {
-  // Settings state
   const [apiKey, setApiKey] = useState<string>('');
   const [showSettings, setShowSettings] = useState<boolean>(false);
   const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_MODEL_ID);
   
-  // Translation state
   const [inputText, setInputText] = useState('');
   const [outputText, setOutputText] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  
+  const [state, setState] = useState<TranslationState>({
+    status: 'idle',
+    progress: 0,
+    currentChunk: 0,
+    totalChunks: 0
+  });
+
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
-  // Языковые пары
   const [fromLang, setFromLang] = useState('English');
   const [toLang, setToLang] = useState('Russian');
 
-  const languages = [
-    'English',
-    'Russian',
-    'Spanish',
-    'French',
-    'German',
-    'Chinese',
-    'Japanese'
-  ];
+  const languages = ['English', 'Russian', 'Spanish', 'French', 'German', 'Chinese', 'Japanese'];
 
-  // Load API key from localStorage on mount
+  // Load from localStorage
   useEffect(() => {
     const storedKey = localStorage.getItem('openrouter_api_key');
     if (storedKey) {
       setApiKey(storedKey);
     } else {
-      // Показываем настройки, если ключа нет
       setShowSettings(true);
     }
 
@@ -58,7 +162,6 @@ export default function TranslatorPage() {
     }
   }, []);
 
-  // Save API key
   const handleSaveApiKey = (key: string) => {
     setApiKey(key);
     if (key) {
@@ -68,65 +171,81 @@ export default function TranslatorPage() {
     }
   };
 
-  // Save selected model
   const handleModelChange = (modelId: string) => {
     setSelectedModel(modelId);
     localStorage.setItem('selected_model', modelId);
   };
 
-  const handleTranslate = async () => {
-    if (!inputText.trim()) {
-      showToastMessage('Введите текст для перевода!');
-      return;
-    }
-
+  // ГЛАВНАЯ ФУНКЦИЯ ПЕРЕВОДА (как в референсе)
+  const startTranslation = async () => {
     if (!apiKey) {
       setShowSettings(true);
       showToastMessage('Введите API ключ в настройках');
       return;
     }
+    if (!inputText.trim()) {
+      showToastMessage('Введите текст для перевода!');
+      return;
+    }
 
-    setIsLoading(true);
-    setError(null);
-    setStats(null);
+    // Чанкирование
+    const chunks = splitTextIntoChunks(inputText, 2500);
+    const totalChunks = chunks.length;
+
+    setState({
+      status: 'translating',
+      progress: 0,
+      currentChunk: 0,
+      totalChunks,
+      error: undefined
+    });
+
+    const translatedParts: string[] = [];
 
     try {
-      const response = await fetch('/api/translator', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          text: inputText,
+      // Последовательный перевод (как в референсе)
+      for (let i = 0; i < totalChunks; i++) {
+        setState(prev => ({
+          ...prev,
+          currentChunk: i + 1,
+          progress: Math.round(((i) / totalChunks) * 100)
+        }));
+
+        const translatedChunk = await translateChunk(
+          chunks[i],
+          selectedModel,
+          apiKey,
           fromLang,
           toLang,
-          maxParallel: 5,
-          model: selectedModel,
-          apiKey: apiKey  // Отправляем API ключ пользователя
-        }),
-      });
+          (attempt) => console.log(`Retry attempt ${attempt} for chunk ${i + 1}`)
+        );
 
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Ошибка перевода');
+        translatedParts.push(translatedChunk);
       }
 
-      setOutputText(data.result);
-      setStats(data.stats);
+      const fullTranslation = translatedParts.join('\n\n');
+      setOutputText(fullTranslation);
+
+      setState({
+        status: 'completed',
+        progress: 100,
+        currentChunk: totalChunks,
+        totalChunks
+      });
+
       showToastMessage('Перевод выполнен!');
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Неизвестная ошибка';
-      setError(errorMessage);
-      showToastMessage(`Ошибка: ${errorMessage}`);
-    } finally {
-      setIsLoading(false);
+    } catch (err: any) {
+      setState(prev => ({
+        ...prev,
+        status: 'error',
+        error: err.message || 'Ошибка при переводе'
+      }));
+      showToastMessage(`Ошибка: ${err.message}`);
     }
   };
 
   const handleCopy = async () => {
     if (!outputText) return;
-
     try {
       await navigator.clipboard.writeText(outputText);
       showToastMessage('Скопировано!');
@@ -138,16 +257,18 @@ export default function TranslatorPage() {
   const handleClear = () => {
     setInputText('');
     setOutputText('');
-    setStats(null);
-    setError(null);
+    setState({
+      status: 'idle',
+      progress: 0,
+      currentChunk: 0,
+      totalChunks: 0
+    });
   };
 
   const swapLanguages = () => {
     const temp = fromLang;
     setFromLang(toLang);
     setToLang(temp);
-    
-    // Опционально: также обменять тексты
     const tempText = inputText;
     setInputText(outputText);
     setOutputText(tempText);
@@ -172,7 +293,7 @@ export default function TranslatorPage() {
         <span className="text-gray-900 font-medium">AI Переводчик</span>
       </div>
 
-      {/* Header with Settings Button */}
+      {/* Header */}
       <div className="mb-6 flex items-start justify-between">
         <div>
           <h1 className="text-3xl font-semibold text-gray-900 mb-2 flex items-center gap-3">
@@ -180,7 +301,7 @@ export default function TranslatorPage() {
             AI Переводчик текстов
           </h1>
           <p className="text-gray-600 text-sm">
-            Умный перевод больших текстов через AI модели с чанкированием
+            Полный перевод больших текстов без сокращений
           </p>
         </div>
         
@@ -191,7 +312,6 @@ export default function TranslatorPage() {
               ? 'bg-red-100 text-red-600 border-2 border-red-300 animate-pulse' 
               : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
           }`}
-          title="Настройки"
         >
           <Settings className="w-5 h-5" />
           <span className="text-sm font-medium">Настройки</span>
@@ -200,7 +320,7 @@ export default function TranslatorPage() {
 
       {/* Settings Panel */}
       {showSettings && (
-        <div className="bg-white rounded-lg border-2 border-purple-200 shadow-lg p-6 mb-6 animate-in slide-in-from-top-4 duration-300">
+        <div className="bg-white rounded-lg border-2 border-purple-200 shadow-lg p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
               <Key className="w-5 h-5 text-purple-600" />
@@ -215,7 +335,6 @@ export default function TranslatorPage() {
           </div>
           
           <div className="space-y-4">
-            {/* API Key Input */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 OpenRouter API Key
@@ -240,7 +359,6 @@ export default function TranslatorPage() {
               </p>
             </div>
 
-            {/* API Key Status */}
             {apiKey && (
               <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-2 text-sm text-green-700">
                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
@@ -253,36 +371,22 @@ export default function TranslatorPage() {
 
       {/* Model Selector */}
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 mb-6">
-        <div className="flex items-center gap-2 mb-3">
-          <Zap className="w-5 h-5 text-purple-600" />
-          <h3 className="font-semibold text-gray-900">Выбор AI модели</h3>
-        </div>
-        
+        <h3 className="font-semibold text-gray-900 mb-3 text-sm">Выбор AI модели</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {AVAILABLE_MODELS.map(model => (
             <button
               key={model.id}
               onClick={() => handleModelChange(model.id)}
-              disabled={isLoading}
-              className={`p-4 rounded-lg border-2 text-left transition-all ${
+              disabled={state.status === 'translating'}
+              className={`p-3 rounded-lg border-2 text-left transition-all text-sm ${
                 selectedModel === model.id
-                  ? 'border-purple-500 bg-purple-50 ring-2 ring-purple-200'
-                  : 'border-gray-200 hover:border-purple-300 hover:bg-gray-50'
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  ? 'border-purple-500 bg-purple-50'
+                  : 'border-gray-200 hover:border-purple-300'
+              } disabled:opacity-50`}
             >
-              <div className="flex items-start justify-between mb-2">
-                <div className="font-semibold text-gray-900 text-sm">{model.name}</div>
-                {selectedModel === model.id && (
-                  <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
-                )}
-              </div>
-              <div className="text-xs text-gray-600 mb-2">{model.description}</div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-500">{model.provider}</span>
-                <span className="text-purple-600 font-medium">
-                  {model.contextLength.toLocaleString()} tokens
-                </span>
-              </div>
+              <div className="font-semibold text-gray-900">{model.name}</div>
+              <div className="text-xs text-gray-600 mt-1">{model.description}</div>
+              <div className="text-xs text-purple-600 mt-1">{model.contextLength.toLocaleString()} tokens</div>
             </button>
           ))}
         </div>
@@ -292,14 +396,12 @@ export default function TranslatorPage() {
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 mb-6">
         <div className="flex items-center justify-center gap-4">
           <div className="flex-1 max-w-xs">
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              Исходный язык
-            </label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Исходный язык</label>
             <select
               value={fromLang}
               onChange={(e) => setFromLang(e.target.value)}
-              disabled={isLoading}
-              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none disabled:opacity-50"
+              disabled={state.status === 'translating'}
+              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-sm"
             >
               {languages.map(lang => (
                 <option key={lang} value={lang}>{lang}</option>
@@ -309,22 +411,19 @@ export default function TranslatorPage() {
 
           <button
             onClick={swapLanguages}
-            disabled={isLoading}
-            className="mt-5 p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
-            title="Поменять местами"
+            disabled={state.status === 'translating'}
+            className="mt-5 p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <Languages className="w-5 h-5 text-gray-600" />
           </button>
 
           <div className="flex-1 max-w-xs">
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              Целевой язык
-            </label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Целевой язык</label>
             <select
               value={toLang}
               onChange={(e) => setToLang(e.target.value)}
-              disabled={isLoading}
-              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none disabled:opacity-50"
+              disabled={state.status === 'translating'}
+              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-sm"
             >
               {languages.map(lang => (
                 <option key={lang} value={lang}>{lang}</option>
@@ -337,46 +436,32 @@ export default function TranslatorPage() {
       {/* Main Interface */}
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6 mb-6">
         <div className="grid lg:grid-cols-[1fr_auto_1fr] gap-6">
-          {/* Input Column */}
+          {/* Input */}
           <div className="flex flex-col">
-            <label className="font-semibold text-gray-700 mb-2 text-sm">
-              Исходный текст:
-            </label>
+            <label className="font-semibold text-gray-700 mb-2 text-sm">Исходный текст:</label>
             <textarea
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              disabled={isLoading}
-              className="flex-grow min-h-[28rem] p-4 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none resize-none text-sm disabled:bg-gray-50 disabled:text-gray-500"
-              placeholder="Вставьте текст для перевода здесь..."
+              disabled={state.status === 'translating'}
+              className="flex-grow min-h-[28rem] p-4 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none resize-none text-sm"
+              placeholder="Вставьте текст для перевода..."
             />
-            <div className="mt-2 flex gap-3 text-xs text-gray-500">
-              <span className="bg-gray-100 px-3 py-1 rounded">
-                Символов: {inputText.length.toLocaleString()}
-              </span>
-              {inputText.length > 0 && (
-                <span className="bg-purple-50 text-purple-700 px-3 py-1 rounded">
-                  ~{Math.ceil(inputText.length / 4)} токенов
-                </span>
-              )}
+            <div className="mt-2 text-xs text-gray-500">
+              Символов: {inputText.length.toLocaleString()}
             </div>
           </div>
 
-          {/* Buttons Column */}
+          {/* Buttons */}
           <div className="flex lg:flex-col justify-center items-center gap-3 lg:w-48">
             <button
-              onClick={handleTranslate}
-              disabled={isLoading || !inputText.trim() || !apiKey}
-              className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-4 rounded-lg transition-all flex items-center justify-center gap-2 text-sm disabled:bg-gray-300 disabled:cursor-not-allowed shadow-sm"
+              onClick={startTranslation}
+              disabled={state.status === 'translating' || !inputText.trim() || !apiKey}
+              className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-4 rounded-lg transition-all flex items-center justify-center gap-2 text-sm disabled:bg-gray-300 disabled:cursor-not-allowed"
             >
-              {isLoading ? (
+              {state.status === 'translating' ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
                   <span>Перевожу...</span>
-                </>
-              ) : !apiKey ? (
-                <>
-                  <Settings className="w-4 h-4" />
-                  <span>Нужен ключ</span>
                 </>
               ) : (
                 <>
@@ -389,7 +474,7 @@ export default function TranslatorPage() {
             <button
               onClick={handleCopy}
               disabled={!outputText}
-              className="w-full bg-white hover:bg-gray-50 text-gray-800 border border-gray-300 font-medium py-3 px-4 rounded-lg transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-white hover:bg-gray-50 text-gray-800 border border-gray-300 font-medium py-3 px-4 rounded-lg transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-50"
             >
               <Copy className="w-4 h-4" />
               <span>Скопировать</span>
@@ -397,39 +482,29 @@ export default function TranslatorPage() {
 
             <button
               onClick={handleClear}
-              disabled={isLoading}
-              className="w-full bg-white hover:bg-red-50 text-red-600 border border-gray-300 hover:border-red-200 font-medium py-3 px-4 rounded-lg transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={state.status === 'translating'}
+              className="w-full bg-white hover:bg-red-50 text-red-600 border border-gray-300 font-medium py-3 px-4 rounded-lg transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-50"
             >
               <Trash2 className="w-4 h-4" />
               <span>Очистить</span>
             </button>
           </div>
 
-          {/* Output Column */}
+          {/* Output */}
           <div className="flex flex-col relative">
-            <label className="font-semibold text-gray-700 mb-2 text-sm">
-              Результат перевода:
-            </label>
+            <label className="font-semibold text-gray-700 mb-2 text-sm">Результат:</label>
             <textarea
               value={outputText}
               readOnly
-              className="flex-grow min-h-[28rem] p-4 border border-gray-200 rounded-lg bg-gray-50 outline-none resize-none text-sm text-gray-700"
+              className="flex-grow min-h-[28rem] p-4 border border-gray-200 rounded-lg bg-gray-50 outline-none resize-none text-sm"
               placeholder="Результат появится здесь..."
             />
-            <div className="mt-2 flex gap-3 text-xs text-gray-500">
-              <span className="bg-gray-100 px-3 py-1 rounded">
-                Символов: {outputText.length.toLocaleString()}
-              </span>
-              {stats && (
-                <span className="bg-green-50 text-green-700 px-3 py-1 rounded">
-                  {(stats.processingTime / 1000).toFixed(1)}с
-                </span>
-              )}
+            <div className="mt-2 text-xs text-gray-500">
+              Символов: {outputText.length.toLocaleString()}
             </div>
 
-            {/* Toast */}
             {showToast && (
-              <div className="absolute bottom-16 right-4 bg-gray-800 text-white text-xs px-4 py-2 rounded shadow-lg animate-fade-in z-10">
+              <div className="absolute bottom-16 right-4 bg-gray-800 text-white text-xs px-4 py-2 rounded shadow-lg z-10">
                 {toastMessage}
               </div>
             )}
@@ -437,107 +512,46 @@ export default function TranslatorPage() {
         </div>
       </div>
 
-      {/* Stats Section */}
-      {stats && (
-        <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-200 shadow-sm p-6 mb-6">
-          <h3 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-purple-600" />
-            Статистика перевода
-            {selectedModelData && (
-              <span className="text-xs text-purple-600 bg-purple-100 px-2 py-1 rounded ml-auto">
-                {selectedModelData.name}
-              </span>
-            )}
-          </h3>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <div className="bg-white rounded-lg p-3 border border-purple-100">
-              <div className="text-xs text-gray-600 mb-1">Чанков</div>
-              <div className="text-lg font-bold text-purple-600">{stats.chunksCount}</div>
-            </div>
-            <div className="bg-white rounded-lg p-3 border border-purple-100">
-              <div className="text-xs text-gray-600 mb-1">Токенов</div>
-              <div className="text-lg font-bold text-purple-600">~{stats.estimatedTokens}</div>
-            </div>
-            <div className="bg-white rounded-lg p-3 border border-purple-100">
-              <div className="text-xs text-gray-600 mb-1">Время</div>
-              <div className="text-lg font-bold text-purple-600">{(stats.processingTime / 1000).toFixed(1)}с</div>
-            </div>
-            <div className="bg-white rounded-lg p-3 border border-purple-100">
-              <div className="text-xs text-gray-600 mb-1">Исходный</div>
-              <div className="text-lg font-bold text-purple-600">{stats.originalLength}</div>
-            </div>
-            <div className="bg-white rounded-lg p-3 border border-purple-100">
-              <div className="text-xs text-gray-600 mb-1">Переведено</div>
-              <div className="text-lg font-bold text-purple-600">{stats.translatedLength}</div>
-            </div>
+      {/* Progress */}
+      {(state.status === 'translating' || state.status === 'completed') && (
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6 mb-6">
+          <div className="flex justify-between text-sm font-medium mb-2">
+            <span>{state.status === 'completed' ? '✅ Готово!' : 'Перевожу...'}</span>
+            <span className="text-gray-500">{state.currentChunk} / {state.totalChunks} частей</span>
           </div>
+          <div className="w-full bg-gray-200 rounded-full h-3">
+            <div 
+              className="bg-purple-600 h-full rounded-full transition-all"
+              style={{ width: `${state.progress}%` }}
+            />
+          </div>
+          {state.status === 'translating' && (
+            <div className="mt-3 text-sm text-purple-600 flex items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Обработка части {state.currentChunk} из {state.totalChunks}. Не закрывайте страницу.</span>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Error Section */}
-      {error && (
+      {/* Error */}
+      {state.status === 'error' && state.error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
           <div className="flex items-start gap-3">
-            <div className="text-red-600 mt-0.5">
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-            </div>
+            <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
             <div>
               <h3 className="text-sm font-semibold text-red-800 mb-1">Ошибка перевода</h3>
-              <p className="text-sm text-red-700">{error}</p>
+              <p className="text-sm text-red-700">{state.error}</p>
+              <button 
+                onClick={startTranslation}
+                className="mt-3 text-sm font-medium text-red-800 underline hover:text-red-900"
+              >
+                Попробовать снова
+              </button>
             </div>
           </div>
         </div>
       )}
-
-      {/* Features Section */}
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
-        <h3 className="text-base font-bold text-gray-800 mb-4 flex items-center gap-2">
-          <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          Возможности AI переводчика
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm text-gray-700">
-          <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
-            <div className="font-bold text-purple-700 mb-2">🔑 Свой API ключ</div>
-            <div className="text-gray-600 text-xs">
-              Используйте свой ключ OpenRouter для полного контроля
-            </div>
-          </div>
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
-            <div className="font-bold text-blue-700 mb-2">🤖 6 AI моделей</div>
-            <div className="text-gray-600 text-xs">
-              DeepSeek V3, Claude, GPT-4o, Gemini и другие на выбор
-            </div>
-          </div>
-          <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
-            <div className="font-bold text-green-700 mb-2">⚡ Быстрое чанкирование</div>
-            <div className="text-gray-600 text-xs">
-              Умная разбивка больших текстов на оптимальные чанки
-            </div>
-          </div>
-          <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-lg border border-orange-200">
-            <div className="font-bold text-orange-700 mb-2">🔄 Параллельная обработка</div>
-            <div className="text-gray-600 text-xs">
-              До 5 параллельных запросов для максимальной скорости
-            </div>
-          </div>
-          <div className="bg-gradient-to-br from-pink-50 to-pink-100 p-4 rounded-lg border border-pink-200">
-            <div className="font-bold text-pink-700 mb-2">💾 Локальное хранение</div>
-            <div className="text-gray-600 text-xs">
-              API ключ и настройки сохраняются в браузере
-            </div>
-          </div>
-          <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 p-4 rounded-lg border border-indigo-200">
-            <div className="font-bold text-indigo-700 mb-2">📊 Подробная статистика</div>
-            <div className="text-gray-600 text-xs">
-              Время обработки, количество токенов и чанков
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
