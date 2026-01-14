@@ -2,11 +2,21 @@
  * Типы для переводчика
  */
 
+export interface AIModel {
+  id: string;
+  name: string;
+  description: string;
+  contextLength: number;
+  provider: string;
+}
+
 export interface TranslateRequest {
   text: string;
   fromLang?: string;
   toLang?: string;
   maxParallel?: number;
+  model?: string;
+  apiKey?: string;  // Опциональный API ключ от пользователя
 }
 
 export interface TranslateResponse {

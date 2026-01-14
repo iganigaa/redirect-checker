@@ -1,14 +1,14 @@
 /**
- * OpenRouter Client для работы с DeepSeek V3
+ * OpenRouter Client для работы с AI моделями
  */
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const MODEL = 'deepseek/deepseek-chat';
 
 export interface TranslationOptions {
   fromLang?: string;
   toLang?: string;
   temperature?: number;
+  model?: string;
 }
 
 /**
@@ -40,10 +40,10 @@ export async function translateChunk(
   apiKey: string,
   options: TranslationOptions = {}
 ): Promise<string> {
-  const { temperature = 0.2 } = options;
+  const { temperature = 0.2, model = 'deepseek/deepseek-chat' } = options;
   
   const payload = {
-    model: MODEL,
+    model,
     ...buildPrompt(text, options),
     temperature
   };

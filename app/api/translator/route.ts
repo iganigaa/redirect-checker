@@ -11,7 +11,14 @@ export async function POST(request: NextRequest) {
   try {
     // Получаем данные из запроса
     const body: TranslateRequest = await request.json();
-    const { text, fromLang = 'English', toLang = 'Russian', maxParallel = 5 } = body;
+    const { 
+      text, 
+      fromLang = 'English', 
+      toLang = 'Russian', 
+      maxParallel = 5,
+      model = 'deepseek/deepseek-chat',
+      apiKey: userApiKey 
+    } = body;
 
     // Валидация
     if (!text || text.trim().length === 0) {
@@ -21,13 +28,13 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Проверяем наличие API ключа
-    const apiKey = process.env.OPENROUTER_API_KEY;
+    // Проверяем наличие API ключа (серверный или пользовательский)
+    const apiKey = userApiKey || process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
       return NextResponse.json<TranslateResponse>({
         success: false,
-        error: 'API ключ не настроен'
-      }, { status: 500 });
+        error: 'API ключ не настроен. Введите его в настройках или добавьте в переменные окружения.'
+      }, { status: 400 });
     }
 
     // Чанкирование текста
@@ -39,7 +46,7 @@ export async function POST(request: NextRequest) {
     const translatedChunks = await translateChunks(
       chunks,
       apiKey,
-      { fromLang, toLang },
+      { fromLang, toLang, model },
       maxParallel
     );
 
