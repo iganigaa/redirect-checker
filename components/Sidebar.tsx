@@ -20,6 +20,7 @@ import {
   ShoppingCart,
   ChevronLeft,
   ChevronRight as ChevronRightIcon,
+  Wand2,
 } from 'lucide-react';
 
 const tools = [
@@ -27,8 +28,9 @@ const tools = [
   { name: 'Clean-param', href: '/clean-param', icon: Settings },
   { name: 'Robots Tester', href: '/robots-tester', icon: FileText },
   { name: 'Traffic Calculator', href: '/traffic-calculator', icon: TrendingUp },
+  { name: 'AI Переводчик', href: '/translator', icon: Sparkles },
   { name: 'Транслитератор', href: '/transliterator', icon: Languages },
-  { name: 'URL Cleaner', href: '/url-cleaner', icon: Sparkles },
+  { name: 'URL Cleaner', href: '/url-cleaner', icon: Wand2 },
   { name: 'Knowledge Graph', href: '/knowledge-graph', icon: Network },
   { name: 'E-commerce', href: '/e-commerce-generator', icon: ShoppingCart },
 ];
