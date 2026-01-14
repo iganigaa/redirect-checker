@@ -63,12 +63,32 @@ export async function translateChunk(
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData?.error?.message || `API Error: ${response.status}`);
+        // Пытаемся получить текст ошибки
+        let errorMessage = `API Error: ${response.status}`;
+        try {
+          const contentType = response.headers.get('content-type');
+          if (contentType?.includes('application/json')) {
+            const errorData = await response.json();
+            errorMessage = errorData?.error?.message || errorData?.message || errorMessage;
+          } else {
+            const errorText = await response.text();
+            errorMessage = errorText || errorMessage;
+          }
+        } catch (e) {
+          // Игнорируем ошибки парсинга
+        }
+        throw new Error(errorMessage);
       }
 
+      // Парсим успешный ответ
       const data = await response.json();
-      return data.choices?.[0]?.message?.content || "";
+      const translatedText = data.choices?.[0]?.message?.content || "";
+      
+      if (!translatedText) {
+        throw new Error('Empty response from API');
+      }
+      
+      return translatedText;
     } catch (error) {
       attempt++;
       console.log(`[Translator] Retry attempt ${attempt} for chunk`);

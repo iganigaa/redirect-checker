@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { smartChunk, mergeChunks, estimateTokens } from '@/lib/translator/chunker';
 import { translateChunks } from '@/lib/translator/openrouter';
+import { getErrorMessage } from '@/lib/translator/errorMessages';
 import type { TranslateRequest, TranslateResponse } from '@/lib/translator/types';
 
 export const maxDuration = 300; // 5 минут для больших текстов
@@ -34,6 +35,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json<TranslateResponse>({
         success: false,
         error: 'API ключ не настроен. Введите его в настройках или добавьте в переменные окружения.'
+      }, { status: 400 });
+    }
+
+    // Проверяем формат API ключа
+    if (!apiKey.startsWith('sk-or-')) {
+      return NextResponse.json<TranslateResponse>({
+        success: false,
+        error: 'Неверный формат API ключа. Ключ должен начинаться с "sk-or-". Получите правильный ключ на https://openrouter.ai/keys'
       }, { status: 400 });
     }
 
@@ -72,9 +81,22 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('[Translator] Error:', error);
     
+    // Более детальное логирование
+    if (error instanceof Error) {
+      console.error('[Translator] Error details:', {
+        message: error.message,
+        stack: error.stack
+      });
+    }
+    
+    // Получаем понятное сообщение об ошибке
+    const errorMessage = error instanceof Error 
+      ? getErrorMessage(error)
+      : 'Произошла ошибка при переводе';
+    
     return NextResponse.json<TranslateResponse>({
       success: false,
-      error: error instanceof Error ? error.message : 'Произошла ошибка при переводе'
+      error: errorMessage
     }, { status: 500 });
   }
 }
