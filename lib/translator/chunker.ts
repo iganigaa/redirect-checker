@@ -1,64 +1,70 @@
 /**
- * Smart Text Chunker для быстрой разбивки больших текстов
- * Без тяжелых NLP библиотек, на regex + эвристиках
+ * Smart Text Chunker для разбивки больших текстов
+ * Сохраняет структуру параграфов и предложений
  */
 
-// Regex для разделения на предложения
-const SENTENCE_SPLIT_RE = /(?<=[.!?])\s+/;
-
 /**
- * Разделяет текст на предложения
- */
-export function splitIntoSentences(text: string): string[] {
-  return text.trim().split(SENTENCE_SPLIT_RE).filter(s => s.length > 0);
-}
-
-/**
- * Умное чанкирование текста с учетом границ предложений
+ * Умное чанкирование текста с учетом границ параграфов и предложений
  * @param text - исходный текст
- * @param maxChars - максимум символов в чанке (по умолчанию 3500)
- * @param overlapSentences - количество предложений для overlap (по умолчанию 1)
+ * @param maxChunkSize - максимум символов в чанке (по умолчанию 2500)
  */
-export function smartChunk(
-  text: string,
-  maxChars: number = 3500,
-  overlapSentences: number = 1
-): string[] {
-  const sentences = splitIntoSentences(text);
+export function smartChunk(text: string, maxChunkSize: number = 2500): string[] {
+  if (!text) return [];
+  if (text.length <= maxChunkSize) return [text];
+
   const chunks: string[] = [];
+  
+  // Разбиваем по параграфам (двойные переносы строк)
+  const paragraphs = text.split(/\n\n+/);
+  
+  let currentChunk = "";
 
-  let current: string[] = [];
-  let currentLen = 0;
-
-  for (let i = 0; i < sentences.length; i++) {
-    const sentence = sentences[i];
-    const sLen = sentence.length;
-
-    if (currentLen + sLen <= maxChars) {
-      current.push(sentence);
-      currentLen += sLen;
-    } else {
-      // Сохраняем текущий чанк
-      if (current.length > 0) {
-        chunks.push(current.join(' '));
+  for (const paragraph of paragraphs) {
+    // Если добавление параграфа превысит лимит, сохраняем текущий чанк
+    if (currentChunk.length + paragraph.length + 2 > maxChunkSize) {
+      if (currentChunk.length > 0) {
+        chunks.push(currentChunk.trim());
+        currentChunk = "";
       }
 
-      // Создаем overlap для консистентности
-      const overlap = overlapSentences > 0 
-        ? current.slice(-overlapSentences) 
-        : [];
-      
-      current = [...overlap, sentence];
-      currentLen = current.reduce((sum, s) => sum + s.length, 0);
+      // Обработка случая, когда один параграф больше maxChunkSize
+      if (paragraph.length > maxChunkSize) {
+        // Разбиваем параграф по предложениям
+        const sentences = paragraph.match(/[^.!?]+[.!?]+(\s+|$)/g) || [paragraph];
+        
+        for (const sentence of sentences) {
+          if (currentChunk.length + sentence.length > maxChunkSize) {
+            if (currentChunk.length > 0) {
+              chunks.push(currentChunk.trim());
+            }
+            currentChunk = sentence;
+          } else {
+            currentChunk += sentence;
+          }
+        }
+      } else {
+        currentChunk = paragraph;
+      }
+    } else {
+      // Добавляем параграф с двойным переносом
+      currentChunk += (currentChunk.length > 0 ? "\n\n" : "") + paragraph;
     }
   }
 
   // Добавляем последний чанк
-  if (current.length > 0) {
-    chunks.push(current.join(' '));
+  if (currentChunk.trim().length > 0) {
+    chunks.push(currentChunk.trim());
   }
 
   return chunks;
+}
+
+/**
+ * Разделяет текст на предложения (для совместимости)
+ */
+export function splitIntoSentences(text: string): string[] {
+  const sentences = text.match(/[^.!?]+[.!?]+(\s+|$)/g);
+  return sentences ? sentences.map(s => s.trim()).filter(s => s.length > 0) : [];
 }
 
 /**

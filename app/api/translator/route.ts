@@ -37,17 +37,17 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Чанкирование текста
-    const chunks = smartChunk(text, 3500, 1);
+    // Чанкирование текста (2500 символов для стабильности)
+    const chunks = smartChunk(text, 2500);
     
     console.log(`[Translator] Processing ${chunks.length} chunks, ~${estimateTokens(text)} tokens`);
+    console.log(`[Translator] Chunk sizes:`, chunks.map(c => c.length));
 
-    // Параллельный перевод всех чанков
+    // Последовательный перевод всех чанков (более надежно)
     const translatedChunks = await translateChunks(
       chunks,
       apiKey,
-      { fromLang, toLang, model },
-      maxParallel
+      { fromLang, toLang, model }
     );
 
     // Склейка результата

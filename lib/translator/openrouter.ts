@@ -15,92 +15,102 @@ export interface TranslationOptions {
  * Создает промпт для перевода
  */
 function buildPrompt(text: string, options: TranslationOptions = {}) {
-  const { fromLang = 'English', toLang = 'Russian', temperature = 0.2 } = options;
+  const { fromLang = 'English', toLang = 'Russian' } = options;
 
   return {
     messages: [
       {
         role: 'system',
-        content: `You are a professional translator. Translate from ${fromLang} to ${toLang}. Preserve meaning, structure, lists, headings, and formatting. Do not summarize. Do not omit anything. Maintain the original tone and style.`
+        content: `You are a professional translator. Translate the following text from ${fromLang} to ${toLang}. Do not summarize. Do not explain. Return ONLY the translated text. Preserve the original formatting and paragraph structure exactly. Translate ALL the text completely without omitting anything.`
       },
       {
         role: 'user',
         content: text
       }
-    ],
-    temperature
+    ]
   };
 }
 
 /**
- * Переводит один чанк текста через OpenRouter
+ * Переводит один чанк текста через OpenRouter с retry логикой
  */
 export async function translateChunk(
   text: string, 
   apiKey: string,
   options: TranslationOptions = {}
 ): Promise<string> {
-  const { temperature = 0.2, model = 'deepseek/deepseek-chat' } = options;
+  const { temperature = 0.3, model = 'deepseek/deepseek-chat' } = options;
+  const maxRetries = 3;
+  let attempt = 0;
   
-  const payload = {
-    model,
-    ...buildPrompt(text, options),
-    temperature
-  };
+  while (attempt < maxRetries) {
+    try {
+      const payload = {
+        model,
+        ...buildPrompt(text, options),
+        temperature
+      };
 
-  const response = await fetch(OPENROUTER_URL, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': 'https://igorburdukov.me', // Опционально для аналитики
-      'X-Title': 'AI Translator'
-    },
-    body: JSON.stringify(payload)
-  });
+      const response = await fetch(OPENROUTER_URL, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://igorburdukov.me',
+          'X-Title': 'AI Translator'
+        },
+        body: JSON.stringify(payload)
+      });
 
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`OpenRouter API error: ${response.status} - ${error}`);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData?.error?.message || `API Error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.choices?.[0]?.message?.content || "";
+    } catch (error) {
+      attempt++;
+      console.log(`[Translator] Retry attempt ${attempt} for chunk`);
+      
+      if (attempt >= maxRetries) {
+        throw error;
+      }
+      
+      // Exponential backoff
+      await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
+    }
   }
-
-  const data = await response.json();
-  return data.choices[0].message.content;
+  
+  return "";
 }
 
 /**
- * Параллельный перевод нескольких чанков с ограничением concurrency
+ * Последовательный перевод всех чанков (более надежный способ)
  */
 export async function translateChunks(
   chunks: string[],
   apiKey: string,
   options: TranslationOptions = {},
-  maxParallel: number = 5
+  onProgress?: (current: number, total: number) => void
 ): Promise<string[]> {
-  const results: string[] = new Array(chunks.length);
-  const executing: Promise<void>[] = [];
+  const results: string[] = [];
 
   for (let i = 0; i < chunks.length; i++) {
-    const index = i;
-    const promise = translateChunk(chunks[index], apiKey, options)
-      .then(result => {
-        results[index] = result;
-      });
-
-    executing.push(promise);
-
-    // Ограничиваем количество параллельных запросов
-    if (executing.length >= maxParallel) {
-      await Promise.race(executing);
-      executing.splice(
-        executing.findIndex(p => p === promise), 
-        1
-      );
+    console.log(`[Translator] Processing chunk ${i + 1} of ${chunks.length}`);
+    
+    if (onProgress) {
+      onProgress(i + 1, chunks.length);
+    }
+    
+    const translatedChunk = await translateChunk(chunks[i], apiKey, options);
+    results.push(translatedChunk);
+    
+    // Небольшая пауза между запросами для стабильности
+    if (i < chunks.length - 1) {
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
   }
 
-  // Ждем завершения всех оставшихся запросов
-  await Promise.all(executing);
-  
   return results;
 }
